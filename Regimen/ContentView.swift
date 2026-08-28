@@ -2,23 +2,26 @@
 //  ContentView.swift
 //  Regimen
 //
-//  Created by Alec Agayan on 8/28/26.
-//
 
 import SwiftUI
 
 struct ContentView: View {
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-        }
-        .padding()
-    }
-}
+        TabView {
+            RoutineView()
+                .tabItem { Label("Routine", systemImage: "checklist") }
 
-#Preview {
-    ContentView()
+            ReorderView()
+                .tabItem { Label("Reorder", systemImage: "cart") }
+
+            ProgressTabView()
+                .tabItem { Label("Progress", systemImage: "camera.on.rectangle") }
+
+            ProductsView()
+                .tabItem { Label("Products", systemImage: "leaf") }
+        }
+        .tint(Color.brand)
+        .toolbarBackground(Color.cardSurface, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
+    }
 }
