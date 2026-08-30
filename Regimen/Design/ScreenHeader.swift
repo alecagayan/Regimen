@@ -9,24 +9,43 @@
 
 import SwiftUI
 
-struct ScreenHeader: View {
+struct ScreenHeader<Accessory: View>: View {
     let title: String
     var subtitle: String?
+    /// Trailing content aligned to the title's own baseline area — the
+    /// streak badge on Routine, the profile button on Cabinet. Owning this
+    /// here (rather than each tab wrapping the header in its own HStack and
+    /// guessing at matching padding) is what keeps the four tabs' headers
+    /// actually identical.
+    @ViewBuilder var accessory: () -> Accessory
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(.display(34))
-                .foregroundStyle(.primary)
-            if let subtitle {
-                Text(subtitle)
-                    .font(.emphasized(15))
-                    .foregroundStyle(.secondary)
+        // Centered, not top-aligned: the accessory reads as a peer of the
+        // title block (sitting on the axis through the title and its
+        // subtitle) rather than as something tacked onto the corner.
+        HStack(alignment: .center, spacing: Theme.Spacing.md) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.screenTitle)
+                    .foregroundStyle(.primary)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(.rowTitle)
+                        .foregroundStyle(.secondary)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            accessory()
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, Theme.Spacing.lg)
         .padding(.top, Theme.Spacing.sm)
         .padding(.bottom, Theme.Spacing.sm)
+    }
+}
+
+extension ScreenHeader where Accessory == EmptyView {
+    init(title: String, subtitle: String? = nil) {
+        self.init(title: title, subtitle: subtitle, accessory: { EmptyView() })
     }
 }

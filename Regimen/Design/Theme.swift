@@ -15,6 +15,12 @@ enum Theme {
         static let md: CGFloat = 16
         static let lg: CGFloat = 24
         static let xl: CGFloat = 32
+
+        /// Bottom padding for a scroll view that sits under a floating
+        /// action button, so the last row can always be scrolled clear of
+        /// it. Sized to the 58pt button plus its own bottom inset and a
+        /// comfortable gap.
+        static let floatingButtonClearance: CGFloat = 110
     }
 
     enum Radius {
@@ -36,17 +42,50 @@ extension Color {
     static let brand = Color.accent
 }
 
+/// The app's type scale.
+///
+/// Every one of these is built on a system *text style* (`.largeTitle`,
+/// `.footnote`, ...) rather than a fixed point size, so all body copy scales
+/// with the reader's Dynamic Type setting. Fixed `.system(size:)` type — what
+/// this replaced — silently ignores that setting entirely, which is both an
+/// accessibility failure and an App Review risk.
+///
+/// The one legitimate exception is a glyph pinned inside a fixed-size shape
+/// (an avatar initial, an icon in a 28pt circle): those must not grow or they
+/// overflow their container, so they still use `.system(size:)` locally.
+///
+/// Rounded throughout for headings and numerals — the "friendly" half of the
+/// app's voice — and default-design for running text, which stays more legible
+/// at small sizes.
 extension Font {
-    /// Rounded, bold display type used for screen headers — reserved for
-    /// headline-scale text so the rest of the UI still reads as a normal,
-    /// legible system font rather than feeling "toy-like."
-    static func display(_ size: CGFloat) -> Font {
-        .system(size: size, weight: .bold, design: .rounded)
-    }
+    /// The big rounded headline every tab opens with (`ScreenHeader`).
+    static let screenTitle = Font.system(.largeTitle, design: .rounded).weight(.bold)
+    /// Full-screen moments: onboarding pages, the paywall header.
+    static let pageTitle = Font.system(.title, design: .rounded).weight(.bold)
 
-    static func emphasized(_ size: CGFloat = 15) -> Font {
-        .system(size: size, weight: .semibold, design: .rounded)
-    }
+    /// A headline number meant to be read from across the room — a skin
+    /// score, days-remaining.
+    static let metricLarge = Font.system(.title2, design: .rounded).weight(.bold)
+    /// A secondary number sharing space with other content.
+    static let metric = Font.system(.title3, design: .rounded).weight(.bold)
+
+    /// The title of a card or a section of one.
+    static let cardTitle = Font.system(.headline, design: .rounded)
+    /// The title of a row inside a list of cards.
+    static let rowTitle = Font.system(.callout, design: .rounded).weight(.semibold)
+    /// An emphasized label on a control (buttons, pill toggles).
+    static let controlLabel = Font.system(.callout, design: .rounded).weight(.semibold)
+
+    /// Running text: descriptions, explanatory copy.
+    static let bodyText = Font.system(.subheadline)
+    /// The secondary line under a row title (brand, category, dates).
+    static let rowSubtitle = Font.system(.footnote)
+    /// Fine print: disclaimers, footnotes, helper text.
+    static let caption = Font.system(.caption)
+    /// An all-caps section label ("THIS WEEK", "SPOTTED").
+    static let sectionLabel = Font.system(.caption2).weight(.semibold)
+    /// Text inside a `StatusChip` or other compact pill.
+    static let chipLabel = Font.system(.caption2, design: .rounded).weight(.semibold)
 }
 
 /// The card look used throughout the app: soft surface, hairline border, and

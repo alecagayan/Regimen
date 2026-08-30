@@ -21,7 +21,12 @@ enum PhotoStorageService {
         guard let data = image.jpegData(compressionQuality: 0.85) else {
             throw PhotoStorageError.encodingFailed
         }
-        let path = "\(userID.uuidString)/\(UUID().uuidString).jpg"
+        // Lowercased: Swift's UUID().uuidString is uppercase, but Postgres's
+        // auth.uid()::text is lowercase, and the storage RLS policy does an
+        // exact string comparison between this path's folder and that value
+        // -- an uppercase folder name here means the policy check can never
+        // match, and every upload gets rejected regardless of whose it is.
+        let path = "\(userID.uuidString.lowercased())/\(UUID().uuidString.lowercased()).jpg"
         try await SupabaseManager.client.storage
             .from(bucket)
             .upload(path, data: data, options: FileOptions(contentType: "image/jpeg"))

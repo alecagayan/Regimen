@@ -94,7 +94,7 @@ struct BeforeAfterSliderView: View {
 
     private func compareLabel(_ text: String) -> some View {
         Text(text)
-            .font(.system(size: 11, weight: .bold, design: .rounded))
+            .font(.chipLabel)
             .tracking(0.5)
             .foregroundStyle(.white)
             .padding(.horizontal, 10)

@@ -24,10 +24,10 @@ struct ConflictBanner: View {
                     }
                     VStack(alignment: .leading, spacing: 2) {
                         Text("\(conflict.productA.name) + \(conflict.productB.name)")
-                            .font(.emphasized(14))
+                            .font(.rowTitle)
                             .foregroundStyle(.primary)
                         Text(conflict.reason)
-                            .font(.system(size: 12.5))
+                            .font(.rowSubtitle)
                             .foregroundStyle(.secondary)
                     }
                 }

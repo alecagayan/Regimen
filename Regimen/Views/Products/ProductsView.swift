@@ -7,12 +7,12 @@ import SwiftUI
 
 struct ProductsView: View {
     @Environment(AppData.self) private var appData
-    @Environment(\.signOut) private var signOut
+    @Environment(AppNavigation.self) private var navigation
 
     @State private var showingAddSheet = false
     @State private var editingProduct: Product?
     @State private var showArchived = false
-    @State private var showingSignOutConfirmation = false
+    @State private var showingProfile = false
 
     private var visibleProducts: [Product] {
         appData.products.filter { showArchived || !$0.isArchived }
@@ -28,49 +28,30 @@ struct ProductsView: View {
     var body: some View {
         NavigationStack {
             ZStack(alignment: .bottomTrailing) {
-                ScrollView {
-                    VStack(spacing: Theme.Spacing.md) {
-                        HStack(alignment: .top) {
-                            ScreenHeader(title: "Products", subtitle: subtitle)
-                            Spacer()
-                            Button {
-                                showingSignOutConfirmation = true
-                            } label: {
-                                Image(systemName: "person.crop.circle")
-                                    .font(.system(size: 22))
-                                    .foregroundStyle(.secondary)
-                            }
-                            .padding(.top, Theme.Spacing.md)
-                            .padding(.trailing, Theme.Spacing.lg)
+                VStack(spacing: Theme.Spacing.md) {
+                    ScreenHeader(title: "Cabinet", subtitle: subtitle) {
+                        Button {
+                            showingProfile = true
+                        } label: {
+                            Image(systemName: "person.crop.circle")
+                                .font(.system(size: 36))
+                                .foregroundStyle(.secondary)
                         }
+                        .accessibilityLabel("Profile and settings")
+                    }
 
-                        HStack {
-                            Spacer()
-                            Button {
-                                showArchived.toggle()
-                            } label: {
-                                Label("Archived", systemImage: showArchived ? "archivebox.fill" : "archivebox")
-                                    .font(.system(size: 12.5, weight: .semibold))
-                            }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(showArchived ? Color.brand : .secondary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 7)
-                            .background(
-                                Capsule().fill(showArchived ? Color.brand.opacity(0.12) : Color.cardSurface)
-                            )
-                            .overlay(Capsule().strokeBorder(Color.subtleBorder, lineWidth: 1))
-                        }
-                        .padding(.horizontal, Theme.Spacing.lg)
-
-                        if visibleProducts.isEmpty {
-                            EmptyStateView(
-                                icon: "leaf",
-                                title: "No Products",
-                                message: "Tap + to add your first product."
-                            )
-                            .padding(.top, Theme.Spacing.xl)
-                        } else {
+                    if visibleProducts.isEmpty {
+                        EmptyStateView(
+                            icon: "cross.case",
+                            title: showArchived ? "Nothing Here Yet" : "Cabinet's Empty",
+                            message: "Add the products you use and Regimen will build your routine, track what's running low, and watch your progress.",
+                            actionTitle: "Add Your First Product",
+                            action: { showingAddSheet = true }
+                        )
+                        .padding(.top, Theme.Spacing.xl)
+                        Spacer()
+                    } else {
+                        ScrollView {
                             LazyVStack(spacing: Theme.Spacing.sm) {
                                 ForEach(visibleProducts) { product in
                                     ProductRow(
@@ -82,36 +63,58 @@ struct ProductsView: View {
                                 }
                             }
                             .padding(.horizontal, Theme.Spacing.lg)
+                            .padding(.bottom, Theme.Spacing.floatingButtonClearance)
                         }
                     }
-                    .padding(.bottom, 110)
                 }
                 .background(Color.appBackground.ignoresSafeArea())
 
-                Button {
-                    showingAddSheet = true
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: 58, height: 58)
-                        .background(Color.brand.gradient, in: Circle())
-                        .shadow(color: Color.brand.opacity(0.35), radius: 14, x: 0, y: 8)
+                HStack(alignment: .bottom, spacing: Theme.Spacing.sm) {
+                    Button {
+                        showArchived.toggle()
+                    } label: {
+                        Label("Archived", systemImage: showArchived ? "archivebox.fill" : "archivebox")
+                            .font(.rowSubtitle.weight(.semibold))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(showArchived ? Color.brand : .secondary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(
+                        Capsule().fill(showArchived ? Color.brand.opacity(0.12) : Color.cardSurface)
+                    )
+                    .overlay(Capsule().strokeBorder(Color.subtleBorder, lineWidth: 1))
+
+                    Button {
+                        showingAddSheet = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 58, height: 58)
+                            .background(Color.brand.gradient, in: Circle())
+                            .shadow(color: Color.brand.opacity(0.35), radius: 14, x: 0, y: 8)
+                    }
                 }
                 .padding(.trailing, Theme.Spacing.lg)
                 .padding(.bottom, Theme.Spacing.md)
             }
             .toolbar(.hidden, for: .navigationBar)
+            // Another tab handed the user here to add a product (see
+            // AppNavigation) -- consume the one-shot signal and present.
+            .onChange(of: navigation.isAddingProduct) { _, isAdding in
+                guard isAdding else { return }
+                showingAddSheet = true
+                navigation.isAddingProduct = false
+            }
             .sheet(isPresented: $showingAddSheet) {
                 ProductEditView(product: nil)
             }
             .sheet(item: $editingProduct) { product in
                 ProductEditView(product: product)
             }
-            .confirmationDialog("Sign Out?", isPresented: $showingSignOutConfirmation, titleVisibility: .visible) {
-                Button("Sign Out", role: .destructive) {
-                    Task { try? await signOut() }
-                }
+            .sheet(isPresented: $showingProfile) {
+                ProfileSettingsView()
             }
         }
     }
@@ -135,12 +138,11 @@ private struct ProductRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(product.name)
-                    .font(.emphasized(16))
+                    .font(.rowTitle)
                     .foregroundStyle(.primary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+                    .lineLimit(2)
                 Text("\(product.brand) · \(product.routineTime.rawValue) · \(Int(product.sizeInML)) mL")
-                    .font(.system(size: 12.5))
+                    .font(.rowSubtitle)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -161,7 +163,7 @@ private struct ProductRow: View {
                 Button("Delete", systemImage: "trash", role: .destructive, action: onDelete)
             } label: {
                 Image(systemName: "ellipsis")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.body.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .frame(width: 32, height: 32)
                     .contentShape(Rectangle())

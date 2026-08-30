@@ -22,5 +22,8 @@ struct ProgressGauge: View {
             }
         }
         .frame(height: 6)
+        // The same information is always present as text beside the gauge
+        // (days remaining, or the score), so announcing it twice adds noise.
+        .accessibilityHidden(true)
     }
 }

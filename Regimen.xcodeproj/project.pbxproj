@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		70D7CDE53043D1090011ACCA /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 70D7CDE43043D1090011ACCA /* WidgetKit.framework */; };
+		70D7CDE73043D1090011ACCA /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 70D7CDE63043D1090011ACCA /* SwiftUI.framework */; };
+		70D7CDF83043D10B0011ACCA /* RegimenWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 70D7CDE23043D1090011ACCA /* RegimenWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		A1B2C3D4E5F6A1B2C3D4E5F8 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = A1B2C3D4E5F6A1B2C3D4E5F7 /* Supabase */; };
 /* End PBXBuildFile section */
 
@@ -25,13 +28,49 @@
 			remoteGlobalIDString = 704B66BB30415782009E448B;
 			remoteInfo = Regimen;
 		};
+		70D7CDF63043D10B0011ACCA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 704B66B430415782009E448B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 70D7CDE13043D1090011ACCA;
+			remoteInfo = RegimenWidgetExtension;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		70D7CDFD3043D10B0011ACCA /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				70D7CDF83043D10B0011ACCA /* RegimenWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		704B66BC30415782009E448B /* Regimen.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Regimen.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		704B66C930415783009E448B /* RegimenTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RegimenTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		704B66D330415783009E448B /* RegimenUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RegimenUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		70D7CDE23043D1090011ACCA /* RegimenWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = RegimenWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		70D7CDE43043D1090011ACCA /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		70D7CDE63043D1090011ACCA /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		70D7CDFF3043D1590011ACCA /* RegimenWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = RegimenWidgetExtension.entitlements; sourceTree = "<group>"; };
+		70D7CE063043DEFD0011ACCA /* Regimen.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Regimen.storekit; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		70D7CDF93043D10B0011ACCA /* Exceptions for "RegimenWidget" folder in "RegimenWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 70D7CDE13043D1090011ACCA /* RegimenWidgetExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		704B66BE30415782009E448B /* Regimen */ = {
@@ -47,6 +86,14 @@
 		704B66D630415783009E448B /* RegimenUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = RegimenUITests;
+			sourceTree = "<group>";
+		};
+		70D7CDE83043D1090011ACCA /* RegimenWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				70D7CDF93043D10B0011ACCA /* Exceptions for "RegimenWidget" folder in "RegimenWidgetExtension" target */,
+			);
+			path = RegimenWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -74,15 +121,28 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		70D7CDDF3043D1090011ACCA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				70D7CDE73043D1090011ACCA /* SwiftUI.framework in Frameworks */,
+				70D7CDE53043D1090011ACCA /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		704B66B330415782009E448B = {
 			isa = PBXGroup;
 			children = (
+				70D7CE063043DEFD0011ACCA /* Regimen.storekit */,
+				70D7CDFF3043D1590011ACCA /* RegimenWidgetExtension.entitlements */,
 				704B66BE30415782009E448B /* Regimen */,
 				704B66CC30415783009E448B /* RegimenTests */,
 				704B66D630415783009E448B /* RegimenUITests */,
+				70D7CDE83043D1090011ACCA /* RegimenWidget */,
+				70D7CDE33043D1090011ACCA /* Frameworks */,
 				704B66BD30415782009E448B /* Products */,
 			);
 			sourceTree = "<group>";
@@ -93,8 +153,18 @@
 				704B66BC30415782009E448B /* Regimen.app */,
 				704B66C930415783009E448B /* RegimenTests.xctest */,
 				704B66D330415783009E448B /* RegimenUITests.xctest */,
+				70D7CDE23043D1090011ACCA /* RegimenWidgetExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		70D7CDE33043D1090011ACCA /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				70D7CDE43043D1090011ACCA /* WidgetKit.framework */,
+				70D7CDE63043D1090011ACCA /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -107,10 +177,12 @@
 				704B66B830415782009E448B /* Sources */,
 				704B66B930415782009E448B /* Frameworks */,
 				704B66BA30415782009E448B /* Resources */,
+				70D7CDFD3043D10B0011ACCA /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				70D7CDF73043D10B0011ACCA /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				704B66BE30415782009E448B /* Regimen */,
@@ -169,6 +241,28 @@
 			productReference = 704B66D330415783009E448B /* RegimenUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		70D7CDE13043D1090011ACCA /* RegimenWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 70D7CDFA3043D10B0011ACCA /* Build configuration list for PBXNativeTarget "RegimenWidgetExtension" */;
+			buildPhases = (
+				70D7CDDE3043D1090011ACCA /* Sources */,
+				70D7CDDF3043D1090011ACCA /* Frameworks */,
+				70D7CDE03043D1090011ACCA /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				70D7CDE83043D1090011ACCA /* RegimenWidget */,
+			);
+			name = RegimenWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = RegimenWidgetExtension;
+			productReference = 70D7CDE23043D1090011ACCA /* RegimenWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -189,6 +283,9 @@
 					704B66D230415783009E448B = {
 						CreatedOnToolsVersion = 26.6;
 						TestTargetID = 704B66BB30415782009E448B;
+					};
+					70D7CDE13043D1090011ACCA = {
+						CreatedOnToolsVersion = 26.6;
 					};
 				};
 			};
@@ -212,6 +309,7 @@
 				704B66BB30415782009E448B /* Regimen */,
 				704B66C830415783009E448B /* RegimenTests */,
 				704B66D230415783009E448B /* RegimenUITests */,
+				70D7CDE13043D1090011ACCA /* RegimenWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -232,6 +330,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		704B66D130415783009E448B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		70D7CDE03043D1090011ACCA /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -262,6 +367,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		70D7CDDE3043D1090011ACCA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -274,6 +386,11 @@
 			isa = PBXTargetDependency;
 			target = 704B66BB30415782009E448B /* Regimen */;
 			targetProxy = 704B66D430415783009E448B /* PBXContainerItemProxy */;
+		};
+		70D7CDF73043D10B0011ACCA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 70D7CDE13043D1090011ACCA /* RegimenWidgetExtension */;
+			targetProxy = 70D7CDF63043D10B0011ACCA /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -404,11 +521,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Regimen/Regimen.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = N92ZZ9Q2HJ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Regimen uses your camera to capture skincare progress photos.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -437,11 +556,13 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Regimen/Regimen.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = N92ZZ9Q2HJ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Regimen uses your camera to capture skincare progress photos.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -549,6 +670,70 @@
 			};
 			name = Release;
 		};
+		70D7CDFB3043D10B0011ACCA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = RegimenWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = N92ZZ9Q2HJ;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RegimenWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = RegimenWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.alecagayan.Regimen.RegimenWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		70D7CDFC3043D10B0011ACCA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = RegimenWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = N92ZZ9Q2HJ;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = RegimenWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = RegimenWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.alecagayan.Regimen.RegimenWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -584,6 +769,15 @@
 			buildConfigurations = (
 				704B66E430415783009E448B /* Debug */,
 				704B66E530415783009E448B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		70D7CDFA3043D10B0011ACCA /* Build configuration list for PBXNativeTarget "RegimenWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				70D7CDFB3043D10B0011ACCA /* Debug */,
+				70D7CDFC3043D10B0011ACCA /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

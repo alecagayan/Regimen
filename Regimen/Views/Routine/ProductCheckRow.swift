@@ -32,6 +32,13 @@ struct ProductCheckRow: View {
 
     var body: some View {
         Button {
+            // Checking a product off is the app's core repeated gesture and
+            // its only physical-feeling one -- the tap should register in
+            // the hand, not just on screen. Unchecking is a correction, so
+            // it stays silent.
+            if !isChecked {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            }
             Task { await appData.toggleUsageLog(for: product, timeOfDay: timeOfDay) }
         } label: {
             HStack(spacing: Theme.Spacing.md) {
@@ -41,12 +48,11 @@ struct ProductCheckRow: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(product.name)
-                        .font(.emphasized(16))
+                        .font(.rowTitle)
                         .foregroundStyle(.primary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
+                        .lineLimit(2)
                     Text("\(product.brand) · \(product.layerCategory.rawValue)")
-                        .font(.system(size: 12.5))
+                        .font(.rowSubtitle)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -55,7 +61,11 @@ struct ProductCheckRow: View {
                     // long product names into an ellipsis almost
                     // immediately (The Ordinary's names run long).
                     if hasConflict {
-                        StatusChip(text: product.conflictTag.rawValue, tint: .orange)
+                        HStack(spacing: 4) {
+                            ForEach(product.conflictTags) { tag in
+                                StatusChip(text: tag.rawValue, tint: .orange)
+                            }
+                        }
                     }
                 }
 
@@ -80,9 +90,20 @@ struct ProductCheckRow: View {
         }
         .buttonStyle(.plain)
         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isChecked)
+        // Without this the row reads out as its four separate pieces
+        // ("3", "Salicylic Acid...", "The Ordinary · Treatment", "checked")
+        // with no indication it's one tappable control. Collapsing it into
+        // a single toggle is how VoiceOver users actually check a step off.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Step \(stepNumber). \(product.name), \(product.brand), \(product.layerCategory.rawValue)")
+        .accessibilityValue(isChecked ? "Used" : "Not used")
+        .accessibilityHint(isChecked ? "Double tap to mark as not used" : "Double tap to mark as used")
+        .accessibilityAddTraits(.isButton)
     }
 
     private var stepBadge: some View {
+        // Fixed size: the numeral is pinned inside a 22pt circle and would
+        // overflow it if it grew with Dynamic Type.
         Text("\(stepNumber)")
             .font(.system(size: 13, weight: .bold, design: .rounded))
             .foregroundStyle(Color.brand)

@@ -18,7 +18,7 @@ struct AuthField: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title.uppercased())
-                .font(.system(size: 11, weight: .semibold))
+                .font(.sectionLabel)
                 .foregroundStyle(.secondary)
 
             Group {

@@ -26,10 +26,11 @@ struct UsageLog: Identifiable, Codable, Hashable {
     var timestamp: Date
     var timeOfDay: TimeOfDay
 
-    /// A per-use estimate rather than a precise measurement — asking a user
-    /// to weigh or measure a skincare product on every application isn't
-    /// realistic. `DepletionPredictor` only needs the aggregate trend across
-    /// many logs to be roughly right, not any single entry to be exact.
+    /// Copied from the product's `typicalDoseML` at the moment this log was
+    /// created — a per-use estimate rather than a precise measurement, since
+    /// there's no way to actually weigh or sense how much was applied.
+    /// Stored per-log (not re-derived from the product later) so editing a
+    /// product's dose going forward doesn't rewrite history.
     var estimatedAmountUsedML: Double
 
     enum CodingKeys: String, CodingKey {

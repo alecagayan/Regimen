@@ -14,7 +14,7 @@ struct StatusChip: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 11, weight: .semibold, design: .rounded))
+            .font(.chipLabel)
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
             .padding(.horizontal, 8)

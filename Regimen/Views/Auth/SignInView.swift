@@ -27,7 +27,7 @@ struct SignInView: View {
 
                 if let errorMessage {
                     Text(errorMessage)
-                        .font(.system(size: 13))
+                        .font(.rowSubtitle)
                         .foregroundStyle(.red)
                 }
 

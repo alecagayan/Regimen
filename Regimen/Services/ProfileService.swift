@@ -26,4 +26,20 @@ enum ProfileService {
             .eq("id", value: userID)
             .execute()
     }
+
+    static func updateName(userID: UUID, name: String) async throws {
+        try await SupabaseManager.client
+            .from(table)
+            .update(["name": name])
+            .eq("id", value: userID)
+            .execute()
+    }
+
+    static func setPremium(userID: UUID, isPremium: Bool) async throws {
+        try await SupabaseManager.client
+            .from(table)
+            .update(["is_premium": isPremium])
+            .eq("id", value: userID)
+            .execute()
+    }
 }

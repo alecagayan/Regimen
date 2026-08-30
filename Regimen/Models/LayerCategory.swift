@@ -49,4 +49,38 @@ enum LayerCategory: String, Codable, CaseIterable, Identifiable, Hashable {
         case .primer: "paintbrush.fill"
         }
     }
+
+    /// A rough starting point for "how much product per use," in mL, used to
+    /// pre-fill a new product's `typicalDoseML` (see `Product`). These are
+    /// generic face-application heuristics (a dime-sized amount for
+    /// cleanser, a few drops for a serum, the "quarter teaspoon" sunscreen
+    /// guideline, ...) — not personalized, and always user-editable. Better
+    /// than one flat number for every product regardless of type, which is
+    /// what this replaced.
+    /// Whether this step belongs in an auto-built *skincare* routine.
+    ///
+    /// `.primer` is the odd one out: it exists so makeup can be layered in
+    /// the right order relative to skincare (see `LayeringAdvisor`), and in
+    /// the catalog it holds foundation and mascara alongside actual primers
+    /// (see `supabase/layering.sql`). Those are fine to track in a cabinet
+    /// and to order correctly, but suggesting one as a routine step is
+    /// wrong -- it's how `RoutineBuilderEngine` ended up recommending a
+    /// mascara. A user's own primer still shows in their routine; it just
+    /// isn't something the builder proposes.
+    var isSkincareStep: Bool {
+        self != .primer
+    }
+
+    var defaultDoseML: Double {
+        switch self {
+        case .cleanser: 2.0
+        case .toner: 1.0
+        case .treatment: 0.5
+        case .eyeCare: 0.2
+        case .moisturizer: 1.5
+        case .facialOil: 0.4
+        case .sunscreen: 1.25
+        case .primer: 0.5
+        }
+    }
 }

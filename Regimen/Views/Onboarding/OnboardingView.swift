@@ -29,9 +29,9 @@ private let onboardingPages: [OnboardingPage] = [
         description: "Build a photo timeline and compare any two photos side-by-side with a drag-to-reveal slider."
     ),
     OnboardingPage(
-        icon: "leaf",
-        title: "Manage Your Shelf",
-        description: "Add every product you own, set when you use it, and archive the ones you're not using right now."
+        icon: "cross.case.fill",
+        title: "Stock Your Cabinet",
+        description: "Add every product you own to your Cabinet, set when you use it, and archive the ones you're not using right now."
     ),
 ]
 
@@ -65,7 +65,7 @@ struct OnboardingView: View {
             .padding(.horizontal, Theme.Spacing.lg)
 
             Button("Skip", action: onFinish)
-                .font(.system(size: 14))
+                .font(.bodyText)
                 .foregroundStyle(.secondary)
                 .padding(.top, Theme.Spacing.sm)
                 .padding(.bottom, Theme.Spacing.lg)
@@ -101,10 +101,10 @@ private struct OnboardingPageView: View {
             }
             VStack(spacing: Theme.Spacing.sm) {
                 Text(page.title)
-                    .font(.display(26))
+                    .font(.pageTitle)
                     .multilineTextAlignment(.center)
                 Text(page.description)
-                    .font(.system(size: 15))
+                    .font(.bodyText)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, Theme.Spacing.xl)

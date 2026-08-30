@@ -22,10 +22,10 @@ struct AuthBranding: View {
                     .foregroundStyle(Color.brand)
             }
             Text(title)
-                .font(.display(24))
+                .font(.pageTitle)
                 .multilineTextAlignment(.center)
             Text(subtitle)
-                .font(.system(size: 14))
+                .font(.bodyText)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
         }

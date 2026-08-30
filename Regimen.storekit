@@ -1,0 +1,63 @@
+{
+  "identifier" : "5A1F3C2D-8B4E-4A6F-9C1D-2E3F4A5B6C7D",
+  "nonRenewingSubscriptions" : [],
+  "products" : [],
+  "settings" : {
+    "_locale" : "en_US"
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "21482544",
+      "localizations" : [],
+      "name" : "Regimen Premium",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "2.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "6F5D2A1A-4B3C-4D2E-8F1A-9C8B7A6D5E4F",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Unlock every premium feature in Regimen.",
+              "displayName" : "Regimen Premium Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.alecagayan.Regimen.premium.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Regimen Premium Monthly",
+          "subscriptionGroupID" : "21482544",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "24.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "8C3E1B7D-5F2A-4E6C-9B8D-1A2C3E4F5B6D",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Unlock every premium feature in Regimen. Billed once a year.",
+              "displayName" : "Regimen Premium Yearly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.alecagayan.Regimen.premium.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Regimen Premium Yearly",
+          "subscriptionGroupID" : "21482544",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

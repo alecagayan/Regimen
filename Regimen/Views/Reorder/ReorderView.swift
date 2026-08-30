@@ -13,6 +13,7 @@ private struct ReorderEntry: Identifiable {
 
 struct ReorderView: View {
     @Environment(AppData.self) private var appData
+    @Environment(AppNavigation.self) private var navigation
 
     private var rows: [ReorderEntry] {
         appData.products
@@ -36,32 +37,35 @@ struct ReorderView: View {
     }
 
     private var subtitle: String {
-        urgentCount == 0 ? "Everything's well stocked" : "\(urgentCount) need\(urgentCount == 1 ? "s" : "") attention soon"
+        urgentCount == 0 ? "Your cabinet's fully stocked" : "\(urgentCount) need\(urgentCount == 1 ? "s" : "") attention soon"
     }
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: Theme.Spacing.md) {
-                    ScreenHeader(title: "Reorder", subtitle: rows.isEmpty ? nil : subtitle)
+            VStack(spacing: Theme.Spacing.md) {
+                ScreenHeader(title: "Reorder", subtitle: rows.isEmpty ? nil : subtitle)
 
-                    if rows.isEmpty {
-                        EmptyStateView(
-                            icon: "shippingbox",
-                            title: "No Products",
-                            message: "Add products in the Products tab to start tracking depletion."
-                        )
-                        .padding(.top, Theme.Spacing.xl)
-                    } else {
+                if rows.isEmpty {
+                    EmptyStateView(
+                        icon: "shippingbox",
+                        title: "Nothing to Track",
+                        message: "Once you add a product and start checking it off, Regimen predicts when it'll run out.",
+                        actionTitle: "Add a Product",
+                        action: { navigation.startAddingProduct() }
+                    )
+                    .padding(.top, Theme.Spacing.xl)
+                    Spacer()
+                } else {
+                    ScrollView {
                         LazyVStack(spacing: Theme.Spacing.sm) {
                             ForEach(rows) { row in
                                 ReorderRow(product: row.product, result: row.result)
                             }
                         }
                         .padding(.horizontal, Theme.Spacing.lg)
+                        .padding(.bottom, Theme.Spacing.xl)
                     }
                 }
-                .padding(.bottom, Theme.Spacing.xl)
             }
             .background(Color.appBackground.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
@@ -74,7 +78,12 @@ private struct ReorderRow: View {
     let result: DepletionPredictor.Result
 
     private var urgencyColor: Color {
-        guard let days = result.daysRemaining else { return .secondary }
+        // No prediction yet means a full, untouched bottle -- which is the
+        // *least* urgent state there is. Tinting it `.secondary` painted a
+        // solid dark bar across the row, making the least informative rows
+        // the visually heaviest thing on screen; a muted brand tint keeps
+        // "nothing to worry about here" reading as calm.
+        guard let days = result.daysRemaining else { return .brand.opacity(0.35) }
         if days <= 7 { return .red }
         if days <= 14 { return .orange }
         return .brand
@@ -87,12 +96,11 @@ private struct ReorderRow: View {
             VStack(alignment: .leading, spacing: 6) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(product.name)
-                        .font(.emphasized(16))
+                        .font(.rowTitle)
                         .foregroundStyle(.primary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
+                        .lineLimit(2)
                     Text(product.brand)
-                        .font(.system(size: 13))
+                        .font(.rowSubtitle)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
@@ -104,16 +112,16 @@ private struct ReorderRow: View {
             VStack(alignment: .trailing, spacing: 2) {
                 if let days = result.daysRemaining {
                     Text(days <= 0 ? "Empty" : "\(days)d")
-                        .font(.display(20))
+                        .font(.metricLarge)
                         .foregroundStyle(urgencyColor)
                     if let date = result.predictedEmptyDate {
                         Text(date, style: .date)
-                            .font(.system(size: 11))
+                            .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 } else {
                     Text("No data")
-                        .font(.system(size: 13))
+                        .font(.rowSubtitle)
                         .foregroundStyle(.secondary)
                 }
             }

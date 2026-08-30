@@ -18,7 +18,7 @@ struct PillToggle<Option: Hashable & CaseIterable & Identifiable>: View where Op
         HStack(spacing: 2) {
             ForEach(Option.allCases) { option in
                 Text(title(option))
-                    .font(.emphasized(15))
+                    .font(.controlLabel)
                     .foregroundStyle(selection == option ? .white : .primary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)

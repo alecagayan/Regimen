@@ -33,4 +33,12 @@ enum ProgressPhotoService {
             .eq("id", value: id)
             .execute()
     }
+
+    static func updateScore(id: UUID, score: Double) async throws {
+        try await SupabaseManager.client
+            .from(table)
+            .update(["skin_score": score])
+            .eq("id", value: id)
+            .execute()
+    }
 }

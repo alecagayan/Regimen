@@ -46,5 +46,8 @@ struct ProductAvatar: View {
                     .font(.system(size: size * 0.42, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
             }
+            // Decorative: it stands in for product photography, and the
+            // product's name is always read out right beside it.
+            .accessibilityHidden(true)
     }
 }

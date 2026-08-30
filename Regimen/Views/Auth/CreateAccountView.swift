@@ -41,7 +41,7 @@ struct CreateAccountView: View {
 
                     if let errorMessage {
                         Text(errorMessage)
-                            .font(.system(size: 13))
+                            .font(.rowSubtitle)
                             .foregroundStyle(.red)
                     }
 
@@ -71,9 +71,9 @@ struct CreateAccountView: View {
                     .foregroundStyle(Color.brand)
             }
             Text("Check Your Email")
-                .font(.display(22))
+                .font(.pageTitle)
             Text("We sent a confirmation link to \(email). Tap it, then come back and sign in.")
-                .font(.system(size: 14))
+                .font(.bodyText)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, Theme.Spacing.lg)

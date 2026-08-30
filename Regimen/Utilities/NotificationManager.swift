@@ -22,6 +22,22 @@ final class NotificationManager {
     /// there's time to actually reorder before the product runs out.
     private let daysBeforeEmptyToNotify = 7
 
+    private let remindersEnabledKey = "remindersEnabled"
+
+    /// User-facing toggle (see `ProfileSettingsView`). Stored in
+    /// `UserDefaults` rather than synced to Supabase — it's a per-device
+    /// notification preference, not routine data that needs to follow the
+    /// account across devices.
+    var remindersEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: remindersEnabledKey) as? Bool ?? true }
+        set {
+            UserDefaults.standard.set(newValue, forKey: remindersEnabledKey)
+            if !newValue {
+                center.removeAllPendingNotificationRequests()
+            }
+        }
+    }
+
     func requestAuthorizationIfNeeded() async {
         let settings = await center.notificationSettings()
         guard settings.authorizationStatus == .notDetermined else { return }
@@ -41,7 +57,7 @@ final class NotificationManager {
         let id = identifier(for: product)
         center.removePendingNotificationRequests(withIdentifiers: [id])
 
-        guard !product.isArchived else { return }
+        guard remindersEnabled, !product.isArchived else { return }
 
         let result = DepletionPredictor.predict(for: product, usageLogs: usageLogs)
         guard let emptyDate = result.predictedEmptyDate else { return }
@@ -69,6 +85,47 @@ final class NotificationManager {
 
     func cancelNotification(for product: Product) {
         center.removePendingNotificationRequests(withIdentifiers: [identifier(for: product)])
+    }
+
+    private let streakReminderIdentifier = "streak-at-risk"
+    /// Local hour to fire the reminder -- late enough that "log it later
+    /// today" is still realistic, early enough to leave time before
+    /// midnight actually breaks the streak.
+    private let streakReminderHour = 20
+
+    /// Reschedules (or clears) today's "don't break your streak" reminder.
+    /// Same opportunistic-refresh pattern as `refreshNotification` — call
+    /// this whenever usage logs change (a check-off, or a fresh
+    /// `loadAll()`) rather than running a background job. A repeating
+    /// notification can't be skipped conditionally once scheduled, so this
+    /// always cancels first and only reschedules a fresh one-off if it's
+    /// still actually needed for today.
+    func refreshStreakReminder(usageLogs: [UsageLog], restores: [StreakRestore] = []) {
+        center.removePendingNotificationRequests(withIdentifiers: [streakReminderIdentifier])
+        guard remindersEnabled else { return }
+
+        // Restores have to be included here too: a streak kept alive by a
+        // restore is still a streak worth protecting, and computing without
+        // them would read it as 0 and silently stop reminding.
+        let streak = StreakCalculator.compute(from: usageLogs, restores: restores)
+        // Nothing to protect (streak is 0), or today's already logged
+        // (recentDays' last entry) -- either way, no reminder is useful.
+        guard streak.currentStreak > 0, streak.recentDays.last == false else { return }
+
+        let calendar = Calendar.current
+        var fireComponents = calendar.dateComponents([.year, .month, .day], from: .now)
+        fireComponents.hour = streakReminderHour
+        fireComponents.minute = 0
+        guard let fireDate = calendar.date(from: fireComponents), fireDate > .now else { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = "Don't break your streak!"
+        content.body = "You're on a \(streak.currentStreak)-day streak — log today's routine before it resets."
+        content.sound = .default
+
+        let trigger = UNCalendarNotificationTrigger(dateMatching: fireComponents, repeats: false)
+        let request = UNNotificationRequest(identifier: streakReminderIdentifier, content: content, trigger: trigger)
+        center.add(request)
     }
 
     private static let dateFormatter: DateFormatter = {

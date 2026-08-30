@@ -2,56 +2,134 @@
 //  RegimenWidget.swift
 //  RegimenWidget
 //
-//  Created by Alec Agayan on 8/29/26.
+//  Home screen widget: streak + latest skin score. Runs in a separate
+//  process from the app, so it can't read `AppData` -- it reads the
+//  handful of numbers `WidgetDataStore` (Regimen/Services/WidgetDataStore.swift)
+//  writes into the shared App Group container on every relevant app change.
+//  Keys/suite name here must match that file's write side exactly.
 //
 
 import WidgetKit
 import SwiftUI
 
-struct Provider: AppIntentTimelineProvider {
-    func placeholder(in context: Context) -> SimpleEntry {
-        SimpleEntry(date: Date(), configuration: ConfigurationAppIntent())
-    }
+private enum SharedStore {
+    static let suiteName = "group.com.alecagayan.Regimen"
+    static let streakKey = "streak"
+    static let latestScoreKey = "latestScore"
+    static let isPremiumKey = "isPremium"
 
-    func snapshot(for configuration: ConfigurationAppIntent, in context: Context) async -> SimpleEntry {
-        SimpleEntry(date: Date(), configuration: configuration)
-    }
-    
-    func timeline(for configuration: ConfigurationAppIntent, in context: Context) async -> Timeline<SimpleEntry> {
-        var entries: [SimpleEntry] = []
-
-        // Generate a timeline consisting of five entries an hour apart, starting from the current date.
-        let currentDate = Date()
-        for hourOffset in 0 ..< 5 {
-            let entryDate = Calendar.current.date(byAdding: .hour, value: hourOffset, to: currentDate)!
-            let entry = SimpleEntry(date: entryDate, configuration: configuration)
-            entries.append(entry)
+    static func read() -> (streak: Int, latestScore: Double?, isPremium: Bool) {
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            return (0, nil, false)
         }
+        let streak = defaults.integer(forKey: streakKey)
+        let latestScore = defaults.object(forKey: latestScoreKey) as? Double
+        let isPremium = defaults.bool(forKey: isPremiumKey)
+        return (streak, latestScore, isPremium)
+    }
+}
 
-        return Timeline(entries: entries, policy: .atEnd)
+struct Provider: TimelineProvider {
+    func placeholder(in context: Context) -> SimpleEntry {
+        SimpleEntry(date: .now, streak: 7, latestScore: 82, isPremium: true)
     }
 
-//    func relevances() async -> WidgetRelevances<ConfigurationAppIntent> {
-//        // Generate a list containing the contexts this widget is relevant in.
-//    }
+    func getSnapshot(in context: Context, completion: @escaping (SimpleEntry) -> Void) {
+        completion(currentEntry())
+    }
+
+    func getTimeline(in context: Context, completion: @escaping (Timeline<SimpleEntry>) -> Void) {
+        // Nothing here changes on its own schedule -- it only changes when
+        // the app writes new data, which triggers WidgetCenter.reloadTimelines
+        // directly (see WidgetDataStore). A single never-expiring entry
+        // avoids WidgetKit re-invoking this needlessly.
+        completion(Timeline(entries: [currentEntry()], policy: .never))
+    }
+
+    private func currentEntry() -> SimpleEntry {
+        let (streak, latestScore, isPremium) = SharedStore.read()
+        return SimpleEntry(date: .now, streak: streak, latestScore: latestScore, isPremium: isPremium)
+    }
 }
 
 struct SimpleEntry: TimelineEntry {
     let date: Date
-    let configuration: ConfigurationAppIntent
+    let streak: Int
+    let latestScore: Double?
+    let isPremium: Bool
 }
 
-struct RegimenWidgetEntryView : View {
+/// Mirrors RoutineView.StreakBadge's tiers -- kept in sync by hand since
+/// the widget extension is a separate module and can't import that type.
+private func streakTier(for count: Int) -> (size: CGFloat, color: Color) {
+    switch count {
+    case 0: (22, .secondary)
+    case 1...2: (26, .orange.opacity(0.75))
+    case 3...6: (30, .orange)
+    case 7...13: (34, Color(red: 1.0, green: 0.45, blue: 0.05))
+    case 14...29: (38, Color(red: 1.0, green: 0.3, blue: 0.05))
+    default: (42, Color(red: 1.0, green: 0.2, blue: 0.05))
+    }
+}
+
+struct RegimenWidgetEntryView: View {
     var entry: Provider.Entry
 
     var body: some View {
-        VStack {
-            Text("Time:")
-            Text(entry.date, style: .time)
-
-            Text("Favorite Emoji:")
-            Text(entry.configuration.favoriteEmoji)
+        if entry.isPremium {
+            statsView
+        } else {
+            upsellView
         }
+    }
+
+    private var statsView: some View {
+        HStack(spacing: 0) {
+            VStack(spacing: 2) {
+                let tier = streakTier(for: entry.streak)
+                Image(systemName: "flame.fill")
+                    .font(.system(size: tier.size))
+                    .foregroundStyle(tier.color)
+                Text("\(entry.streak)")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(.secondary)
+                Text("day streak")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity)
+
+            if let latestScore = entry.latestScore {
+                Divider()
+                VStack(spacing: 2) {
+                    Text("\(Int(latestScore.rounded()))")
+                        .font(.system(size: 26, weight: .bold, design: .rounded))
+                        .foregroundStyle(Color.accentColor)
+                    Text("skin score")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.horizontal, 4)
+        .containerBackground(Color("WidgetBackground"), for: .widget)
+    }
+
+    private var upsellView: some View {
+        VStack(spacing: 6) {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 18))
+                .foregroundStyle(.secondary)
+            Text("Go Premium")
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+            Text("for your streak and score here")
+                .font(.system(size: 10))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding()
+        .containerBackground(Color("WidgetBackground"), for: .widget)
     }
 }
 
@@ -59,30 +137,20 @@ struct RegimenWidget: Widget {
     let kind: String = "RegimenWidget"
 
     var body: some WidgetConfiguration {
-        AppIntentConfiguration(kind: kind, intent: ConfigurationAppIntent.self, provider: Provider()) { entry in
+        StaticConfiguration(kind: kind, provider: Provider()) { entry in
             RegimenWidgetEntryView(entry: entry)
-                .containerBackground(.fill.tertiary, for: .widget)
         }
-    }
-}
-
-extension ConfigurationAppIntent {
-    fileprivate static var smiley: ConfigurationAppIntent {
-        let intent = ConfigurationAppIntent()
-        intent.favoriteEmoji = "😀"
-        return intent
-    }
-    
-    fileprivate static var starEyes: ConfigurationAppIntent {
-        let intent = ConfigurationAppIntent()
-        intent.favoriteEmoji = "🤩"
-        return intent
+        .configurationDisplayName("Streak & Score")
+        .description("Your current routine streak and latest skin score.")
+        .supportedFamilies([.systemSmall])
     }
 }
 
 #Preview(as: .systemSmall) {
     RegimenWidget()
 } timeline: {
-    SimpleEntry(date: .now, configuration: .smiley)
-    SimpleEntry(date: .now, configuration: .starEyes)
+    SimpleEntry(date: .now, streak: 0, latestScore: nil, isPremium: true)
+    SimpleEntry(date: .now, streak: 7, latestScore: 82, isPremium: true)
+    SimpleEntry(date: .now, streak: 30, latestScore: 91, isPremium: true)
+    SimpleEntry(date: .now, streak: 7, latestScore: 82, isPremium: false)
 }
