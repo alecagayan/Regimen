@@ -1,3 +1,7 @@
+---
+title: Regimen Privacy Policy
+---
+
 # Regimen — Privacy Policy
 
 **Last updated: August 30, 2026**
