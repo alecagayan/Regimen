@@ -51,6 +51,12 @@ struct PhotoDetailView: View {
             .skinScore
     }
 
+    private var scanButtonTitle: String {
+        guard currentPhoto.skinScore == nil, scanResult == nil else { return "Re-scan" }
+        if !appData.isPremium && !appData.hasUsedFreeScan { return "Try Your Free Scan" }
+        return "Scan Skin"
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -187,7 +193,7 @@ struct PhotoDetailView: View {
                     ProgressView().tint(.white)
                 } else {
                     Label(
-                        currentPhoto.skinScore == nil && scanResult == nil ? "Scan Skin" : "Re-scan",
+                        scanButtonTitle,
                         systemImage: "sparkles"
                     )
                 }
@@ -200,6 +206,16 @@ struct PhotoDetailView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
+
+                // Set expectations before they tap, not after -- finding
+                // out a scan was "the free one" only once a second attempt
+                // gets blocked would feel like a bait and switch.
+                if !appData.isPremium && !appData.hasUsedFreeScan {
+                    Text("Your first scan is free. After that, Premium unlocks unlimited scans.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
             }
         }
         .padding(.horizontal, Theme.Spacing.lg)
@@ -249,7 +265,7 @@ struct PhotoDetailView: View {
                 }
             }
 
-            Text("Whole-face signals from a smaller, separate model — treat these as softer hints than the highlighted areas above.")
+            Text("Whole-face signals from a smaller, separate model.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -342,7 +358,11 @@ struct PhotoDetailView: View {
 
     private func runScan() {
         guard let loadedImage else { return }
-        guard appData.isPremium else {
+        // Free accounts get exactly one scan -- enough to actually see a
+        // highlighted photo and a real score before deciding whether
+        // premium's worth it, rather than judging the feature from a
+        // paywall's description alone. See `AppData.canRunFreeScan`.
+        guard appData.canRunFreeScan else {
             showingPaywall = true
             return
         }
@@ -361,6 +381,7 @@ struct PhotoDetailView: View {
                 scanResult = result
                 plan = PlanEngine.plan(for: result, ownedProducts: appData.products)
                 categoryRecommendations = RecommendationEngine.categoryRecommendations(for: result.counts, ownedProducts: appData.products)
+                await appData.markFreeScanUsed()
 
                 if let baseline {
                     askForReview(moment: .skinScoreImproved(delta: result.score - baseline))

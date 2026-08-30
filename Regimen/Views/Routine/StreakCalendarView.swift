@@ -3,6 +3,7 @@
 //  Regimen
 //
 
+import StoreKit
 import SwiftUI
 
 /// A month calendar of the days the user logged their routine, reached by
@@ -16,6 +17,9 @@ struct StreakCalendarView: View {
     @State private var visibleMonth = Calendar.current.startOfDay(for: .now)
     @State private var showingPaywall = false
     @State private var isRestoring = false
+    @State private var isPurchasingCredit = false
+    @State private var purchaseErrorMessage: String?
+    @State private var subscription = SubscriptionService.shared
 
     private var calendar: Calendar { .current }
 
@@ -54,6 +58,7 @@ struct StreakCalendarView: View {
             .sheet(isPresented: $showingPaywall) {
                 PaywallView()
             }
+            .task { await subscription.loadRestoreCreditProduct() }
         }
     }
 
@@ -199,12 +204,21 @@ struct StreakCalendarView: View {
                         .foregroundStyle(.secondary)
                     Button("Unlock Streak Restores") { showingPaywall = true }
                         .buttonStyle(.primary)
-                } else if let nextAvailable = appData.nextStreakRestoreAvailableOn {
-                    Text("You've used your restore recently. Your next one is available \(nextAvailable.formatted(.dateTime.month(.abbreviated).day())).")
+                } else if let nextAvailable = appData.nextStreakRestoreAvailableOn, appData.purchasedRestoreCredits == 0 {
+                    Text("You've used your free restore recently. Your next one is available \(nextAvailable.formatted(.dateTime.month(.abbreviated).day())).")
                         .font(.rowSubtitle)
                         .foregroundStyle(.secondary)
+                    Button(action: purchaseCredit) {
+                        if isPurchasingCredit {
+                            ProgressView().tint(.white)
+                        } else {
+                            Text(purchaseCreditLabel)
+                        }
+                    }
+                    .buttonStyle(.secondary)
+                    .disabled(isPurchasingCredit)
                 } else {
-                    Text("Restore that day to bring your streak back. You get one restore every \(AppData.daysBetweenStreakRestores) days.")
+                    Text(restoreEligibleMessage)
                         .font(.rowSubtitle)
                         .foregroundStyle(.secondary)
                     Button(action: restore) {
@@ -217,11 +231,33 @@ struct StreakCalendarView: View {
                     .buttonStyle(.primary)
                     .disabled(isRestoring)
                 }
+
+                if let purchaseErrorMessage {
+                    Text(purchaseErrorMessage)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(Theme.Spacing.md)
             .cardStyle()
         }
+    }
+
+    /// Whether the free monthly restore is what's about to be spent, or a
+    /// purchased credit -- so the confirmation copy doesn't claim a free
+    /// restore is available when it's actually the paid balance covering it.
+    private var restoreEligibleMessage: String {
+        if appData.nextStreakRestoreAvailableOn == nil {
+            return "Restore that day to bring your streak back. You get one free restore every \(AppData.daysBetweenStreakRestores) days."
+        }
+        let credits = appData.purchasedRestoreCredits
+        return "Your free restore is on cooldown, but you have \(credits) purchased \(credits == 1 ? "credit" : "credits") to use instead."
+    }
+
+    private var purchaseCreditLabel: String {
+        guard let product = subscription.restoreCreditProduct else { return "Buy Extra Restore" }
+        return "Buy Extra Restore — \(product.displayPrice)"
     }
 
     // MARK: - Actions
@@ -231,6 +267,20 @@ struct StreakCalendarView: View {
         Task {
             defer { isRestoring = false }
             await appData.restoreStreak()
+        }
+    }
+
+    private func purchaseCredit() {
+        isPurchasingCredit = true
+        purchaseErrorMessage = nil
+        Task {
+            defer { isPurchasingCredit = false }
+            do {
+                try await appData.purchaseStreakRestoreCredit()
+            } catch {
+                print("StreakCalendarView.purchaseCredit failed: \(error)")
+                purchaseErrorMessage = "Something went wrong — please try again."
+            }
         }
     }
 

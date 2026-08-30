@@ -16,9 +16,17 @@ enum SubscriptionError: Error {
 /// one group as mutually exclusive upgrade/downgrade options, not
 /// independent purchases), different renewal period.
 enum SubscriptionPlan: String, CaseIterable {
-    case monthly = "com.alecagayan.Regimen.premium.monthly"
+    case monthly = "com.alecagayan.Regimen.premium.monthly2"
     case yearly = "com.alecagayan.Regimen.premium.yearly"
 }
+
+/// A single $0.99 consumable: one extra streak restore, past the free
+/// one-every-30-days limit (see `AppData.daysBetweenStreakRestores`).
+/// Unlike the subscription plans, this isn't an entitlement StoreKit
+/// remembers -- a consumable only shows up once, at the moment of
+/// purchase, so the app has to keep its own balance (`Profile.
+/// purchasedRestoreCredits`) of what's been bought and not yet spent.
+private let restoreCreditProductID = "com.alecagayan.Regimen.streakrestore.single"
 
 /// Wraps StoreKit 2 for the subscription plans this app sells. This
 /// device's verified entitlement (`hasActiveEntitlement`) is the actual
@@ -40,6 +48,7 @@ final class SubscriptionService {
     // the app already has its own `Product` (a skincare item, see
     // Models/Product.swift), and that's what the bare name resolves to.
     private(set) var products: [SubscriptionPlan: StoreKit.Product] = [:]
+    private(set) var restoreCreditProduct: StoreKit.Product?
     private(set) var isPurchasing = false
 
     /// Set by `AppData` so a transaction that lands outside an explicit
@@ -124,6 +133,49 @@ final class SubscriptionService {
     /// purchase made outside this app session).
     func restore() async throws {
         try await AppStore.sync()
+    }
+
+    // MARK: - Restore credit (consumable)
+
+    func loadRestoreCreditProduct() async {
+        guard restoreCreditProduct == nil else { return }
+        do {
+            restoreCreditProduct = try await StoreKit.Product.products(for: [restoreCreditProductID]).first
+        } catch {
+            print("SubscriptionService.loadRestoreCreditProduct failed: \(error)")
+        }
+    }
+
+    /// Buys one restore credit. Unlike `purchase(_:)`, success here doesn't
+    /// mean "entitled" -- it means the credit still needs to be added to
+    /// `AppData`'s balance and persisted, which is the caller's job (see
+    /// `AppData.purchaseStreakRestoreCredit`), since a consumable's value
+    /// exists only as this app's own bookkeeping, not anything StoreKit
+    /// remembers afterward.
+    @discardableResult
+    func purchaseRestoreCredit() async throws -> Bool {
+        await loadRestoreCreditProduct()
+        guard let restoreCreditProduct else { throw SubscriptionError.productUnavailable }
+
+        isPurchasing = true
+        defer { isPurchasing = false }
+
+        let result = try await restoreCreditProduct.purchase()
+        switch result {
+        case .success(let verification):
+            let transaction = try verified(verification)
+            // Consumables must be finished immediately after the benefit
+            // is granted, not deferred to the shared transaction listener
+            // -- Apple never re-surfaces a consumable transaction the way
+            // it does subscriptions, so there's no later chance to catch
+            // this one if it's left unfinished.
+            await transaction.finish()
+            return true
+        case .userCancelled, .pending:
+            return false
+        @unknown default:
+            return false
+        }
     }
 
     private func verified<T>(_ result: VerificationResult<T>) throws -> T {

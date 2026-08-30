@@ -241,8 +241,6 @@ struct ProgressTabView: View {
     }
 }
 
-// MARK: - TEMP DIAGNOSTIC (remove before shipping)
-
 private struct PhotoThumbnail: View {
     let photo: ProgressPhoto
     let url: URL?

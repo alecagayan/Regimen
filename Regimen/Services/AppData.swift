@@ -38,6 +38,12 @@ final class AppData {
     var photoUploadErrorMessage: String?
     /// Gates every premium feature -- see `Profile.isPremium`.
     private(set) var isPremium = false
+    /// Whether this account has already spent its one free skin scan --
+    /// see `Profile.hasUsedFreeScan` and `canRunFreeScan`.
+    private(set) var hasUsedFreeScan = false
+    /// Purchased-but-not-yet-spent streak restores -- see
+    /// `Profile.purchasedRestoreCredits` and `restoreStreak`.
+    private(set) var purchasedRestoreCredits = 0
 
     let userID: UUID
 
@@ -63,11 +69,18 @@ final class AppData {
         usageLogs = await logsResult ?? []
         progressPhotos = await photosResult ?? []
         isPremium = await profileResult?.isPremium ?? isPremium
+        hasUsedFreeScan = await profileResult?.hasUsedFreeScan ?? hasUsedFreeScan
+        purchasedRestoreCredits = await profileResult?.purchasedRestoreCredits ?? purchasedRestoreCredits
         zoneFindings = await zoneFindingsResult ?? []
         streakRestores = await restoresResult ?? []
 
         await refreshSignedPhotoURLs()
         refreshAllNotifications()
+        // Needs products/usageLogs already refreshed above -- on a cold
+        // launch those start out empty, and flushing against an empty
+        // product list would silently drop every pending widget toggle
+        // instead of reconciling it.
+        await flushPendingWidgetToggles()
         syncWidgetData()
     }
 
@@ -83,7 +96,58 @@ final class AppData {
 
     private func syncWidgetData() {
         let streak = StreakCalculator.compute(from: usageLogs, restores: streakRestores).currentStreak
-        WidgetDataStore.write(streak: streak, latestScore: latestSkinScore, isPremium: isPremium)
+        WidgetDataStore.write(
+            streak: streak,
+            latestScore: latestSkinScore,
+            isPremium: isPremium,
+            amItems: widgetRoutineItems(for: .am),
+            pmItems: widgetRoutineItems(for: .pm)
+        )
+    }
+
+    /// Today's active products for one time of day, in the same order the
+    /// Routine tab shows them, each carrying whether it's already been
+    /// checked off today -- what the widget's interactive checklist
+    /// actually displays.
+    private func widgetRoutineItems(for timeOfDay: TimeOfDay) -> [WidgetRoutineItem] {
+        let calendar = Calendar.current
+        let filtered = products
+            .filter { !$0.isArchived }
+            .filter { $0.routineTime == .both || $0.routineTime.rawValue == timeOfDay.rawValue }
+        return LayeringAdvisor.recommendedOrder(for: filtered).map { product in
+            let isChecked = usageLogs(for: product).contains {
+                $0.timeOfDay == timeOfDay && calendar.isDateInToday($0.timestamp)
+            }
+            return WidgetRoutineItem(id: product.id, name: product.name, icon: product.layerCategory.icon, isChecked: isChecked)
+        }
+    }
+
+    /// Applies any routine check-offs made directly in the widget (see
+    /// `WidgetDataStore.consumePendingToggles`) since the app was last
+    /// open. Reconciles to the *intended* end state rather than blindly
+    /// replaying a toggle -- `toggleUsageLog` flips whatever's currently
+    /// there, and replaying a stale toggle after the state already
+    /// changed some other way (say, the same item was also checked off
+    /// in-app) could flip it back to the wrong value.
+    private func flushPendingWidgetToggles() async {
+        let pending = WidgetDataStore.consumePendingToggles()
+        guard !pending.isEmpty else { return }
+        let calendar = Calendar.current
+
+        for (key, shouldBeChecked) in pending {
+            let parts = key.split(separator: "|")
+            guard parts.count == 2,
+                  let productID = UUID(uuidString: String(parts[0])),
+                  let timeOfDay = TimeOfDay(rawValue: String(parts[1])),
+                  let product = products.first(where: { $0.id == productID })
+            else { continue }
+
+            let isCurrentlyChecked = usageLogs(for: product).contains {
+                $0.timeOfDay == timeOfDay && calendar.isDateInToday($0.timestamp)
+            }
+            guard isCurrentlyChecked != shouldBeChecked else { continue }
+            await toggleUsageLog(for: product, timeOfDay: timeOfDay)
+        }
     }
 
     /// `try?` on each of loadAll's three fetches used to discard the actual
@@ -242,25 +306,69 @@ final class AppData {
         return next
     }
 
+    /// True once either the free monthly restore is available or a
+    /// purchased credit can cover it -- the free one is always preferred
+    /// (see `restoreStreak`), so a credit only ever gets spent while
+    /// genuinely on cooldown.
     var canRestoreStreak: Bool {
-        isPremium && restorableDay != nil && nextStreakRestoreAvailableOn == nil
+        guard isPremium, restorableDay != nil else { return false }
+        return nextStreakRestoreAvailableOn == nil || purchasedRestoreCredits > 0
     }
 
-    /// Spends a restore on the day that's currently breaking the streak.
+    /// Spends a restore on the day that's currently breaking the streak --
+    /// the free monthly one if it's available, otherwise a purchased
+    /// credit. Either way the result is the same `StreakRestore` row;
+    /// nothing downstream (the calendar, the streak count) needs to know
+    /// which paid for it.
     @discardableResult
     func restoreStreak() async -> Bool {
         guard canRestoreStreak, let day = restorableDay else { return false }
+        let spendsCredit = nextStreakRestoreAvailableOn != nil
+
         let restore = StreakRestore(userID: userID, restoredOn: day)
         streakRestores.append(restore)
+        if spendsCredit { purchasedRestoreCredits -= 1 }
+
         do {
             try await StreakRestoreService.insert(restore)
         } catch {
             print("StreakRestoreService.insert failed: \(error)")
             streakRestores.removeAll { $0.id == restore.id }
+            if spendsCredit { purchasedRestoreCredits += 1 }
             return false
+        }
+
+        if spendsCredit {
+            try? await ProfileService.setPurchasedRestoreCredits(userID: userID, count: purchasedRestoreCredits)
         }
         syncWidgetData()
         return true
+    }
+
+    /// Buys one restore credit for $0.99 and adds it to the balance.
+    @discardableResult
+    func purchaseStreakRestoreCredit() async throws -> Bool {
+        let purchased = try await SubscriptionService.shared.purchaseRestoreCredit()
+        guard purchased else { return false }
+        purchasedRestoreCredits += 1
+        try? await ProfileService.setPurchasedRestoreCredits(userID: userID, count: purchasedRestoreCredits)
+        return true
+    }
+
+    /// Whether this account can still run its one free scan -- premium
+    /// accounts never need it, and a free account can only spend it once.
+    var canRunFreeScan: Bool {
+        isPremium || !hasUsedFreeScan
+    }
+
+    /// Records that the free scan has been spent. Called only after a scan
+    /// actually succeeds -- a failed attempt (most commonly "no face
+    /// detected") hasn't shown the user anything yet, so it shouldn't
+    /// burn their one try.
+    func markFreeScanUsed() async {
+        guard !hasUsedFreeScan else { return }
+        hasUsedFreeScan = true
+        try? await ProfileService.markFreeScanUsed(userID: userID)
     }
 
     // MARK: - Premium

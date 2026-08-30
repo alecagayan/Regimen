@@ -2,13 +2,14 @@
 
 **Last updated: August 30, 2026**
 
-> **Before you publish this:** replace `support@example.com` below with a real
-> address you monitor, and host this page at a public URL (GitHub Pages works:
-> push this repo, then Settings → Pages → deploy from `/docs`). App Store
-> Connect requires that URL before you can submit, and App Review will open it.
-> This is a plain-language description of what the app actually does — it is
-> not legal advice, and if you take payment in the EU/UK or expand what the app
-> collects, have a lawyer review it.
+> **Before you publish this:** host this page at a public URL (GitHub Pages
+> works: push this repo, then Settings → Pages → deploy from `/docs`). App
+> Store Connect requires that URL before you can submit, and App Review will
+> open it. The contact address below is filled in with your own email —
+> swap it for a dedicated support alias if you'd rather not use your personal
+> inbox. This is a plain-language description of what the app actually does —
+> it is not legal advice, and if you take payment in the EU/UK or expand what
+> the app collects, have a lawyer review it.
 
 Regimen ("the app") helps you track your skincare routine, predict when
 products will run out, and follow changes in your skin over time. This policy
@@ -105,4 +106,4 @@ and, where appropriate, notify you in the app.
 
 ## Contact
 
-Questions about this policy or your data: **support@example.com**
+Questions about this policy or your data: **alecagayan24@gmail.com**

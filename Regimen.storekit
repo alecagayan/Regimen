@@ -1,7 +1,23 @@
 {
   "identifier" : "5A1F3C2D-8B4E-4A6F-9C1D-2E3F4A5B6C7D",
   "nonRenewingSubscriptions" : [],
-  "products" : [],
+  "products" : [
+    {
+      "displayPrice" : "0.99",
+      "familyShareable" : false,
+      "internalID" : "3D9F2A6C-7B1E-4C5D-8A3F-6E2B9C1D4F7A",
+      "localizations" : [
+        {
+          "description" : "One extra streak restore, on top of your free monthly one.",
+          "displayName" : "Extra Streak Restore",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.alecagayan.Regimen.streakrestore.single",
+      "referenceName" : "Extra Streak Restore",
+      "type" : "Consumable"
+    }
+  ],
   "settings" : {
     "_locale" : "en_US"
   },
@@ -14,7 +30,7 @@
         {
           "adHocOffers" : [],
           "codeOffers" : [],
-          "displayPrice" : "2.99",
+          "displayPrice" : "1.99",
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "6F5D2A1A-4B3C-4D2E-8F1A-9C8B7A6D5E4F",
@@ -26,7 +42,7 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.alecagayan.Regimen.premium.monthly",
+          "productID" : "com.alecagayan.Regimen.premium.monthly2",
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "Regimen Premium Monthly",
           "subscriptionGroupID" : "21482544",
@@ -35,7 +51,7 @@
         {
           "adHocOffers" : [],
           "codeOffers" : [],
-          "displayPrice" : "24.99",
+          "displayPrice" : "19.99",
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "8C3E1B7D-5F2A-4E6C-9B8D-1A2C3E4F5B6D",

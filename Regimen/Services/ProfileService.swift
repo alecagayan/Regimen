@@ -42,4 +42,20 @@ enum ProfileService {
             .eq("id", value: userID)
             .execute()
     }
+
+    static func markFreeScanUsed(userID: UUID) async throws {
+        try await SupabaseManager.client
+            .from(table)
+            .update(["has_used_free_scan": true])
+            .eq("id", value: userID)
+            .execute()
+    }
+
+    static func setPurchasedRestoreCredits(userID: UUID, count: Int) async throws {
+        try await SupabaseManager.client
+            .from(table)
+            .update(["purchased_restore_credits": count])
+            .eq("id", value: userID)
+            .execute()
+    }
 }

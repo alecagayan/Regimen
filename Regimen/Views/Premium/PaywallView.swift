@@ -76,8 +76,23 @@ struct PaywallView: View {
                         Text("Unlock the full picture of your skin.")
                             .font(.bodyText)
                             .foregroundStyle(.secondary)
+                        // Honest, not a countdown: the actual lock-in
+                        // mechanism is Apple's own "keep existing
+                        // subscribers at their current price" option when
+                        // a subscription's price is later raised in App
+                        // Store Connect -- there's no enforced deadline to
+                        // promise here, just that subscribing now is what
+                        // qualifies for it.
+                        StatusChip(text: "🐦 EARLY BIRD PRICING", tint: .orange)
+                            .padding(.top, 2)
                     }
                     .padding(.top, Theme.Spacing.lg)
+
+                    Text("Lock in today's price for as long as you stay subscribed — it goes up as more premium features are added.")
+                        .font(.rowSubtitle)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, Theme.Spacing.xl)
 
                     VStack(spacing: Theme.Spacing.sm) {
                         ForEach(features, id: \.title) { feature in
