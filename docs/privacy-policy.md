@@ -4,7 +4,7 @@ title: Regimen Privacy Policy
 
 # Regimen — Privacy Policy
 
-**Last updated: August 30, 2026**
+**Last updated: September 16, 2026**
 
 > **Before you publish this:** host this page at a public URL (GitHub Pages
 > works: push this repo, then Settings → Pages → deploy from `/docs`). App
@@ -41,10 +41,25 @@ analyzed image separately — the scan reads the photo you already added.
 subscription. Payments themselves are processed entirely by Apple; we never
 receive or store your payment details.
 
+**Sign in with Apple.** If you choose to sign in with Apple, we receive the
+email address Apple provides (which may be a private relay address you can
+revoke at any time) and, on first sign-in only, the name you choose to share.
+We never receive your Apple ID password.
+
+**Feature usage.** Counts of which features get used — a scan was run, a
+product was added, the paywall was shown — so we can see which parts of the
+app work and which don't. These are stored in our own database alongside your
+account, never sent to a third party, and never include your photos, your
+scan scores, or anything you typed. You can switch this off at any time in
+the app under Cabinet → profile icon → Share Usage Data, and the app will
+stop recording them immediately.
+
 ## What we do not collect
 
-- We do not use analytics, advertising, or tracking SDKs. The app has no
-  third-party trackers of any kind.
+- We do not use third-party analytics, advertising, or tracking SDKs. The
+  usage counts described above are first-party only: they go to our own
+  database and nowhere else, and they are never used to track you across
+  other apps or websites.
 - We do not collect your location, contacts, health records, or device
   identifiers for advertising.
 - We do not sell, rent, or share your personal data with third parties for
