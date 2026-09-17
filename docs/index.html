@@ -4,635 +4,421 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Regimen — Know your skin, know your routine</title>
-<meta name="description" content="Regimen tracks your skincare cabinet, flags ingredient conflicts before they happen, and builds a routine around what your skin actually needs.">
+<meta name="description" content="Regimen tracks your skincare routine, flags ingredient clashes before they irritate you, and scans your skin on-device so your photos never leave your iPhone.">
 <link rel="icon" type="image/png" href="assets/icon.png">
+<meta property="og:title" content="Regimen — Know your skin, know your routine">
+<meta property="og:description" content="A skincare tracker that catches ingredient clashes and scans your skin on-device.">
+<meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;450;500;600&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #FAF6F0;
-    --bg-wash: #F1EBE1;
-    --card: #FFFFFF;
-    --border: #E8E2D8;
-    --accent: #3F6C58;
-    --accent-soft: #E4EDE7;
-    --text: #211E1A;
-    --text-secondary: #6B6459;
-    --shadow: 0 16px 40px rgba(63, 108, 88, 0.10);
+:root{
+  --bg:#FAF6F0; --bg-2:#F3EDE3; --card:#FFF; --line:#E7E0D5;
+  --ink:#1B1915; --ink-2:#6E675C; --ink-3:#9A9287;
+  --green:#3F6C58; --green-2:#2E5343; --green-wash:#E6EFE9;
+  --amber:#B4741F; --amber-wash:#FBF0E1;
+  --shadow:0 1px 2px rgba(27,25,21,.04), 0 12px 32px rgba(27,25,21,.07);
+  --shadow-lg:0 2px 4px rgba(27,25,21,.04), 0 32px 64px rgba(27,25,21,.12);
+  --r:14px;
+  --measure:64ch;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#131412; --bg-2:#181A17; --card:#1C1E1B; --line:#2A2D28;
+    --ink:#F2EFE9; --ink-2:#A8A399; --ink-3:#77726A;
+    --green:#8FC9AA; --green-2:#A9D8C0; --green-wash:#1E2A23;
+    --amber:#E0A867; --amber-wash:#2A2318;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 12px 32px rgba(0,0,0,.35);
+    --shadow-lg:0 2px 4px rgba(0,0,0,.3), 0 32px 64px rgba(0,0,0,.5);
   }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font:450 17px/1.6 Inter,-apple-system,BlinkMacSystemFont,sans-serif;
+  -webkit-font-smoothing:antialiased; overflow-x:hidden;
+}
+h1,h2,h3{font-family:Fraunces,Georgia,serif; font-weight:500; letter-spacing:-.012em; line-height:1.12; margin:0}
+p{margin:0}
+a{color:inherit}
+img{max-width:100%; display:block}
+.wrap{width:min(1120px,100% - 48px); margin-inline:auto}
+.eyebrow{
+  font:600 12px/1 Inter,sans-serif; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--green); margin-bottom:18px;
+}
 
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #17171B;
-      --bg-wash: #1C1F1D;
-      --card: #1E1E22;
-      --border: #2C2C30;
-      --accent: #8FC9AA;
-      --accent-soft: #23302A;
-      --text: #F3F1ED;
-      --text-secondary: #A6A29B;
-      --shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
-    }
-  }
+/* ---------- nav ---------- */
+nav{
+  position:sticky; top:0; z-index:50; backdrop-filter:saturate(180%) blur(20px);
+  background:color-mix(in srgb, var(--bg) 82%, transparent);
+  border-bottom:1px solid transparent; transition:border-color .3s;
+}
+nav.stuck{border-bottom-color:var(--line)}
+.nav-in{display:flex; align-items:center; gap:14px; height:64px}
+.mark{display:flex; align-items:center; gap:10px; text-decoration:none; font-family:Fraunces,serif; font-size:19px; font-weight:600}
+.mark img{width:28px; height:28px; border-radius:7px}
+.nav-links{margin-left:auto; display:flex; gap:28px; font-size:14.5px; color:var(--ink-2)}
+.nav-links a{text-decoration:none; transition:color .2s}
+.nav-links a:hover{color:var(--ink)}
+@media(max-width:720px){.nav-links{display:none}}
 
-  * { box-sizing: border-box; }
+/* ---------- hero ---------- */
+.hero{padding:clamp(56px,9vw,104px) 0 0; position:relative}
+.hero-grid{display:grid; grid-template-columns:1.05fr .95fr; gap:clamp(32px,5vw,72px); align-items:center}
+@media(max-width:900px){.hero-grid{grid-template-columns:1fr; gap:48px}}
+.hero h1{font-size:clamp(40px,6.2vw,68px); text-wrap:balance}
+.hero h1 em{font-style:normal; color:var(--green); position:relative; white-space:nowrap}
+.hero h1 em::after{
+  content:''; position:absolute; left:0; right:0; bottom:.06em; height:.10em;
+  background:var(--green); opacity:.22; border-radius:2px;
+  transform:scaleX(0); transform-origin:left; animation:swipe .9s .5s cubic-bezier(.2,.7,.3,1) forwards;
+}
+@keyframes swipe{to{transform:scaleX(1)}}
+.lede{margin-top:22px; font-size:19px; color:var(--ink-2); max-width:46ch}
+.cta-row{margin-top:32px; display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+.btn{
+  display:inline-flex; align-items:center; gap:9px; padding:13px 22px; border-radius:100px;
+  background:var(--green); color:#fff; text-decoration:none; font-weight:600; font-size:15px;
+  box-shadow:0 1px 2px rgba(0,0,0,.1), 0 8px 20px color-mix(in srgb,var(--green) 28%,transparent);
+  transition:transform .18s cubic-bezier(.2,.7,.3,1), box-shadow .18s;
+}
+@media (prefers-color-scheme:dark){.btn{color:#12211A}}
+.btn:hover{transform:translateY(-2px); box-shadow:0 2px 4px rgba(0,0,0,.12), 0 14px 30px color-mix(in srgb,var(--green) 34%,transparent)}
+.btn-ghost{background:transparent; color:var(--ink-2); box-shadow:none; padding-inline:10px}
+.btn-ghost:hover{color:var(--ink); transform:none; box-shadow:none}
+.note{font-size:13.5px; color:var(--ink-3); margin-top:14px}
 
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    overflow-x: hidden;
-  }
+/* ---------- phone ---------- */
+.phone{
+  position:relative; width:min(300px,78vw); margin-inline:auto;
+  border-radius:44px; padding:11px; background:linear-gradient(160deg,#3a3a3a,#111);
+  box-shadow:var(--shadow-lg);
+}
+.phone::after{
+  content:''; position:absolute; top:22px; left:50%; translate:-50% 0;
+  width:84px; height:24px; background:#000; border-radius:99px; z-index:3;
+}
+.screen{position:relative; border-radius:34px; overflow:hidden; aspect-ratio:642/1389; background:var(--bg-2)}
+.screen img{position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0; transition:opacity .55s ease}
+.screen img.on{opacity:1}
 
-  h1, h2, h3, .wordmark, .metric {
-    font-family: 'Quicksand', -apple-system, BlinkMacSystemFont, sans-serif;
-    letter-spacing: -0.01em;
-  }
+/* ---------- section scaffolding ---------- */
+section{padding:clamp(72px,11vw,132px) 0}
+.band{background:var(--bg-2); border-block:1px solid var(--line)}
+.head{max-width:var(--measure)}
+.head h2{font-size:clamp(28px,4vw,42px); text-wrap:balance}
+.head p{margin-top:16px; color:var(--ink-2); font-size:18px}
 
-  .wrap {
-    max-width: 1080px;
-    margin: 0 auto;
-    padding: 0 24px;
-  }
+/* ---------- scrollytelling features ---------- */
+.feat{display:grid; grid-template-columns:1fr 1fr; gap:clamp(40px,6vw,88px); align-items:stretch}
+@media(max-width:900px){.feat{grid-template-columns:1fr}}
+.feat-sticky{position:sticky; top:max(88px, calc(50vh - 320px))}
+.feat-sticky .phone{width:min(268px,74vw)}
+@media(max-width:900px){.feat-sticky{position:static; margin-bottom:8px}}
+.step{padding:clamp(40px,11vh,104px) 0; opacity:.32; transition:opacity .45s}
+.step.live{opacity:1}
+.step:first-child{padding-top:0}
+.step h3{font-size:clamp(22px,2.6vw,30px); margin-bottom:14px}
+.step p{color:var(--ink-2)}
+.step .rule{width:34px; height:2px; background:var(--green); border-radius:2px; margin-bottom:20px; transform:scaleX(.25); transform-origin:left; transition:transform .5s cubic-bezier(.2,.7,.3,1)}
+.step.live .rule{transform:scaleX(1)}
 
-  /* ---------- Nav ---------- */
-  nav.wrap {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding-top: 28px;
-    padding-bottom: 28px;
-  }
+/* ---------- conflict demo ---------- */
+.demo{
+  background:var(--card); border:1px solid var(--line); border-radius:22px;
+  padding:clamp(22px,3.4vw,34px); box-shadow:var(--shadow); max-width:760px;
+}
+.demo-label{font:600 12px/1 Inter,sans-serif; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3)}
+.chips{display:flex; flex-wrap:wrap; gap:9px; margin:14px 0 26px}
+.chip{
+  border:1px solid var(--line); background:var(--bg); color:var(--ink-2);
+  padding:9px 15px; border-radius:100px; font:500 14.5px Inter,sans-serif; cursor:pointer;
+  transition:all .18s cubic-bezier(.2,.7,.3,1);
+}
+.chip:hover{border-color:var(--green); color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--green); border-color:var(--green); color:#fff; transform:translateY(-1px)}
+@media (prefers-color-scheme:dark){.chip[aria-pressed="true"]{color:#12211A}}
+.verdict{border-top:1px solid var(--line); padding-top:22px; min-height:104px}
+.verdict-in{display:flex; gap:14px; align-items:flex-start}
+.dot{flex:none; width:26px; height:26px; border-radius:50%; display:grid; place-items:center; font-size:14px; font-weight:700; margin-top:1px}
+.ok .dot{background:var(--green-wash); color:var(--green)}
+.warn .dot{background:var(--amber-wash); color:var(--amber)}
+.idle{color:var(--ink-3); font-size:15.5px}
+.verdict h4{margin:0 0 6px; font:600 16.5px Inter,sans-serif}
+.warn h4{color:var(--amber)} .ok h4{color:var(--green)}
+.verdict p{font-size:15.5px; color:var(--ink-2); max-width:58ch}
 
-  .brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
+/* ---------- privacy ---------- */
+.privacy{display:grid; grid-template-columns:auto 1fr; gap:clamp(24px,4vw,52px); align-items:center}
+@media(max-width:760px){.privacy{grid-template-columns:1fr}}
+.seal{width:132px; height:132px; flex:none}
+.seal circle, .seal path{vector-effect:non-scaling-stroke}
+.dash{stroke-dasharray:var(--len); stroke-dashoffset:var(--len); transition:stroke-dashoffset 1.4s cubic-bezier(.3,.8,.3,1)}
+.reveal-on .dash{stroke-dashoffset:0}
 
-  .brand img {
-    width: 32px;
-    height: 32px;
-    border-radius: 9px;
-  }
+/* ---------- footer ---------- */
+footer{border-top:1px solid var(--line); padding:44px 0 56px; font-size:14.5px; color:var(--ink-2)}
+.foot{display:flex; gap:22px; align-items:center; flex-wrap:wrap}
+.foot a{text-decoration:none; color:var(--ink-2); transition:color .2s}
+.foot a:hover{color:var(--ink)}
+.foot .sp{margin-left:auto}
 
-  .wordmark {
-    font-weight: 700;
-    font-size: 19px;
-  }
-
-  nav a {
-    color: var(--text-secondary);
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: 500;
-    margin-left: 28px;
-  }
-  nav a:hover { color: var(--text); }
-
-  /* ---------- Hero ---------- */
-  .hero {
-    padding: 56px 0 40px;
-    display: grid;
-    grid-template-columns: 1.1fr 1fr;
-    gap: 56px;
-    align-items: center;
-  }
-
-  .eyebrow {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--accent-soft);
-    color: var(--accent);
-    font-size: 12.5px;
-    font-weight: 600;
-    padding: 6px 12px;
-    border-radius: 100px;
-    margin-bottom: 20px;
-  }
-
-  .hero h1 {
-    font-size: 46px;
-    line-height: 1.12;
-    font-weight: 700;
-    margin: 0 0 20px;
-  }
-
-  .hero p.lede {
-    font-size: 17px;
-    line-height: 1.6;
-    color: var(--text-secondary);
-    max-width: 460px;
-    margin: 0 0 32px;
-  }
-
-  .cta-row {
-    display: flex;
-    align-items: center;
-    gap: 18px;
-    flex-wrap: wrap;
-  }
-
-  .pill-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    background: var(--accent);
-    color: #fff;
-    font-weight: 600;
-    font-size: 14.5px;
-    padding: 14px 22px;
-    border-radius: 100px;
-    text-decoration: none;
-    box-shadow: var(--shadow);
-  }
-
-  .pill-btn .dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #fff;
-    opacity: 0.9;
-  }
-
-  .ghost-link {
-    color: var(--text-secondary);
-    text-decoration: none;
-    font-size: 14.5px;
-    font-weight: 500;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 2px;
-  }
-  .ghost-link:hover { color: var(--text); }
-
-  /* ---------- Hero illustration ---------- */
-  .illustration {
-    position: relative;
-    height: 420px;
-  }
-
-  .float-card {
-    position: absolute;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    box-shadow: var(--shadow);
-    padding: 18px;
-  }
-
-  .card-main {
-    width: 260px;
-    top: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-  }
-
-  .card-main .row-title {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    margin-bottom: 14px;
-    display: flex;
-    justify-content: space-between;
-  }
-
-  .checklist-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 9px 0;
-    border-top: 1px solid var(--border);
-  }
-  .checklist-row:first-of-type { border-top: none; }
-
-  .check {
-    width: 20px;
-    height: 20px;
-    border-radius: 7px;
-    background: var(--accent);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-  .check svg { width: 12px; height: 12px; }
-  .check.pending {
-    background: transparent;
-    border: 1.5px solid var(--border);
-  }
-
-  .checklist-row .label {
-    font-size: 13.5px;
-    font-weight: 500;
-  }
-  .checklist-row .sub {
-    font-size: 11.5px;
-    color: var(--text-secondary);
-  }
-
-  .card-streak {
-    width: 148px;
-    top: 250px;
-    left: 6px;
-    text-align: center;
-  }
-
-  .flame {
-    font-size: 26px;
-    display: block;
-    margin-bottom: 4px;
-  }
-
-  .card-streak .metric {
-    font-size: 26px;
-    font-weight: 700;
-    color: var(--accent);
-    line-height: 1;
-  }
-
-  .card-streak .metric-label {
-    font-size: 11px;
-    color: var(--text-secondary);
-    margin-top: 4px;
-  }
-
-  .card-score {
-    width: 130px;
-    top: 210px;
-    right: 0;
-  }
-
-  .ring {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    background: conic-gradient(var(--accent) 0deg 288deg, var(--border) 288deg 360deg);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 10px;
-  }
-
-  .ring-inner {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    background: var(--card);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 15px;
-    font-family: 'Quicksand', sans-serif;
-  }
-
-  .card-score .metric-label {
-    text-align: center;
-    font-size: 11px;
-    color: var(--text-secondary);
-  }
-
-  /* ---------- Features ---------- */
-  .section {
-    padding: 64px 0;
-  }
-
-  .section-head {
-    text-align: center;
-    max-width: 560px;
-    margin: 0 auto 44px;
-  }
-
-  .section-head h2 {
-    font-size: 30px;
-    font-weight: 700;
-    margin: 0 0 12px;
-  }
-
-  .section-head p {
-    color: var(--text-secondary);
-    font-size: 15.5px;
-    line-height: 1.6;
-    margin: 0;
-  }
-
-  .feature-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
-  }
-
-  .feature-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 26px;
-  }
-
-  .feature-icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 13px;
-    background: var(--accent-soft);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-    margin-bottom: 16px;
-  }
-
-  .feature-card h3 {
-    font-size: 16.5px;
-    font-weight: 700;
-    margin: 0 0 8px;
-  }
-
-  .feature-card p {
-    font-size: 14px;
-    line-height: 1.6;
-    color: var(--text-secondary);
-    margin: 0;
-  }
-
-  .feature-card.wide {
-    grid-column: span 2;
-  }
-
-  /* ---------- Premium band ---------- */
-  .premium-band {
-    background: linear-gradient(180deg, var(--bg-wash), var(--bg));
-    border-top: 1px solid var(--border);
-    border-bottom: 1px solid var(--border);
-  }
-
-  .premium-inner {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 48px;
-    align-items: center;
-  }
-
-  .premium-badge {
-    display: inline-block;
-    background: var(--accent);
-    color: #fff;
-    font-size: 11.5px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    padding: 5px 10px;
-    border-radius: 6px;
-    margin-bottom: 16px;
-  }
-
-  .premium-inner h2 {
-    font-size: 27px;
-    font-weight: 700;
-    margin: 0 0 14px;
-  }
-
-  .premium-list {
-    list-style: none;
-    margin: 22px 0 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .premium-list li {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    font-size: 14.5px;
-    color: var(--text-secondary);
-  }
-
-  .premium-list li::before {
-    content: "";
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--accent);
-    margin-top: 7px;
-    flex-shrink: 0;
-  }
-
-  .premium-list li b { color: var(--text); font-weight: 600; }
-
-  .widget-mock {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 26px;
-    box-shadow: var(--shadow);
-    padding: 20px;
-    max-width: 300px;
-    margin: 0 auto;
-  }
-
-  .widget-mock .wtitle {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 14px;
-  }
-
-  .widget-mock .wtitle span:first-child {
-    font-size: 12.5px;
-    font-weight: 700;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-
-  /* ---------- Footer ---------- */
-  footer {
-    padding: 40px 0 56px;
-  }
-
-  .footer-inner {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-top: 1px solid var(--border);
-    padding-top: 28px;
-    flex-wrap: wrap;
-    gap: 16px;
-  }
-
-  .footer-inner .brand .wordmark { font-size: 15px; }
-  .footer-inner .brand img { width: 22px; height: 22px; border-radius: 6px; }
-
-  .footer-links a {
-    color: var(--text-secondary);
-    text-decoration: none;
-    font-size: 13.5px;
-    margin-left: 22px;
-  }
-  .footer-links a:hover { color: var(--text); }
-
-  @media (max-width: 860px) {
-    .hero { grid-template-columns: 1fr; gap: 40px; padding-top: 24px; }
-    .hero h1 { font-size: 36px; }
-    .illustration { height: 340px; order: -1; }
-    .feature-grid { grid-template-columns: 1fr 1fr; }
-    .feature-card.wide { grid-column: span 2; }
-    .premium-inner { grid-template-columns: 1fr; }
-    .premium-inner .widget-mock { order: -1; }
-  }
-
-  @media (max-width: 560px) {
-    .feature-grid { grid-template-columns: 1fr; }
-    .feature-card.wide { grid-column: span 1; }
-    nav a { margin-left: 16px; font-size: 13px; }
-    .hero h1 { font-size: 30px; }
-    .card-main { width: 220px; }
-    .card-streak { left: -6px; }
-  }
+/* ---------- reveal ---------- */
+.rv{opacity:0; transform:translateY(16px); transition:opacity .7s cubic-bezier(.2,.7,.3,1), transform .7s cubic-bezier(.2,.7,.3,1)}
+.rv.in{opacity:1; transform:none}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .rv,.step,.screen img,.btn,.chip,.dash{transition:none!important; animation:none!important}
+  .rv{opacity:1; transform:none} .step{opacity:1}
+  .hero h1 em::after{transform:scaleX(1)}
+}
 </style>
 </head>
 <body>
 
-<nav class="wrap">
-  <div class="brand">
-    <img src="assets/icon.png" alt="Regimen icon">
-    <span class="wordmark">Regimen</span>
+<nav id="nav"><div class="wrap nav-in">
+  <a class="mark" href="#top"><img src="assets/icon.png" alt="">Regimen</a>
+  <div class="nav-links">
+    <a href="#how">How it works</a>
+    <a href="#clash">Clash check</a>
+    <a href="#privacy">Privacy</a>
+    <a href="privacy-policy">Policy</a>
   </div>
-  <div>
-    <a href="#features">Features</a>
-    <a href="#premium">Premium</a>
-    <a href="privacy-policy.html">Privacy</a>
-  </div>
-</nav>
+</div></nav>
 
-<header class="wrap hero">
-  <div>
-    <span class="eyebrow">🌿 On-device skin analysis</span>
-    <h1>Know what your skin needs. Know when to use it.</h1>
-    <p class="lede">
-      Regimen tracks every product in your cabinet, flags ingredient conflicts
-      before they happen, and turns a photo into a personalized plan — all
-      without your data ever leaving your phone.
-    </p>
-    <div class="cta-row">
-      <a class="pill-btn" href="#">
-        <span class="dot"></span>
-        Coming soon on the App Store
-      </a>
-      <a class="ghost-link" href="#features">See how it works ↓</a>
-    </div>
-  </div>
-
-  <div class="illustration">
-    <div class="float-card card-main">
-      <div class="row-title"><span>Tonight's Routine</span><span>PM</span></div>
-      <div class="checklist-row">
-        <div class="check"><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.5 12L13 4.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        <div><div class="label">Gentle Cleanser</div><div class="sub">CeraVe</div></div>
+<header class="hero wrap" id="top">
+  <div class="hero-grid">
+    <div>
+      <p class="eyebrow">iPhone · Free to start</p>
+      <h1>Half your shelf is fighting <em>the other half</em>.</h1>
+      <p class="lede">Regimen puts your routine in the right order, tells you when two products shouldn't go on your face together, and scans your skin without the photo ever leaving your phone.</p>
+      <div class="cta-row">
+        <a class="btn" href="#">Download on the App Store</a>
+        <a class="btn btn-ghost" href="#how">See how it works →</a>
       </div>
-      <div class="checklist-row">
-        <div class="check"><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.5 12L13 4.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        <div><div class="label">Niacinamide Serum</div><div class="sub">Paula's Choice</div></div>
-      </div>
-      <div class="checklist-row">
-        <div class="check pending"></div>
-        <div><div class="label">Night Moisturizer</div><div class="sub">La Roche-Posay</div></div>
-      </div>
+      <p class="note">Coming soon to the App Store.</p>
     </div>
-
-    <div class="float-card card-streak">
-      <span class="flame">🔥</span>
-      <div class="metric">14</div>
-      <div class="metric-label">day streak</div>
-    </div>
-
-    <div class="float-card card-score">
-      <div class="ring"><div class="ring-inner">82</div></div>
-      <div class="metric-label">skin score</div>
+    <div class="phone rv">
+      <div class="screen" id="screen">
+        <img src="assets/shots/01-routine.jpg" class="on" alt="Today's routine in Regimen" data-k="0">
+        <img src="assets/shots/04-conflicts.jpg" alt="An ingredient clash flagged in the morning routine" data-k="1">
+        <img src="assets/shots/02-scan.jpg" alt="Scan results with product suggestions" data-k="2">
+        <img src="assets/shots/03-progress.jpg" alt="Skin score trend over time" data-k="3">
+        <img src="assets/shots/05-reorder.jpg" alt="Predicted run-out dates" data-k="4">
+      </div>
     </div>
   </div>
 </header>
 
-<section class="section wrap" id="features">
-  <div class="section-head">
-    <h2>Everything your cabinet needs, nothing it doesn't</h2>
-    <p>Regimen isn't another tracker you abandon in a week — it's built around the actual mechanics of a skincare routine: what conflicts, what's running low, and what's actually working.</p>
-  </div>
-
-  <div class="feature-grid">
-    <div class="feature-card">
-      <div class="feature-icon">📸</div>
-      <h3>Skin Scan & Plan</h3>
-      <p>Snap a photo and get a zone-by-zone breakdown plus a plan for what to do next — analyzed entirely on-device.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">⚠️</div>
-      <h3>Conflict Checking</h3>
-      <p>Retinoids, acids, benzoyl peroxide — Regimen flags what shouldn't be layered together before you make the mistake.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">🧴</div>
-      <h3>Smart Cabinet</h3>
-      <p>Every product you own, tracked with usage estimates so you know how many days you have left before you run out.</p>
-    </div>
-    <div class="feature-card wide">
-      <div class="feature-icon">✨</div>
-      <h3>Guided Routine Builder</h3>
-      <p>A short quiz on skin type and goals builds a complete AM/PM routine from your own cabinet — correctly layered, nothing you can't actually use on your face.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">🔥</div>
-      <h3>Streaks & Calendar</h3>
-      <p>See your consistency at a glance, with a calendar view of every day you've shown up.</p>
+<section id="how">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow">How it works</p>
+      <h2>What it does.</h2>
     </div>
   </div>
-</section>
-
-<section class="premium-band" id="premium">
-  <div class="section wrap premium-inner">
+  <div class="wrap feat" style="margin-top:clamp(36px,5vw,64px)">
     <div>
-      <span class="premium-badge">PREMIUM</span>
-      <h2>Check off your routine without opening the app</h2>
-      <p style="color:var(--text-secondary); font-size:15px; line-height:1.6; margin:0;">
-        An interactive Home Screen widget that lives right where you already are —
-        tap a product to mark it done, no app launch required.
-      </p>
-      <ul class="premium-list">
-        <li><b>Interactive widget</b> — check off AM or PM products right from your Home Screen</li>
-        <li><b>Streak restores</b> — patch a missed day so one bad night doesn't reset your progress</li>
-        <li><b>Auto AM/PM switching</b> — the widget flips at noon on its own</li>
-      </ul>
-    </div>
-    <div class="widget-mock">
-      <div class="wtitle"><span>Regimen — AM</span><span class="flame" style="font-size:16px;">🔥 14</span></div>
-      <div class="checklist-row">
-        <div class="check"><svg viewBox="0 0 16 16" fill="none"><path d="M3 8.5L6.5 12L13 4.5" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-        <div><div class="label">Vitamin C Serum</div></div>
+      <div class="feat-sticky">
+        <!-- the phone tracks whichever step is centred; without it here the
+             swap happened on the hero device, long since scrolled away -->
+        <div class="phone">
+          <div class="screen" id="screen2">
+            <img src="assets/shots/01-routine.jpg" class="on" alt="Today's routine" data-k="0">
+            <img src="assets/shots/04-conflicts.jpg" alt="A flagged ingredient clash" data-k="1">
+            <img src="assets/shots/02-scan.jpg" alt="Scan results" data-k="2">
+            <img src="assets/shots/03-progress.jpg" alt="Skin score trend" data-k="3">
+            <img src="assets/shots/05-reorder.jpg" alt="Predicted run-out dates" data-k="4">
+          </div>
+        </div>
       </div>
-      <div class="checklist-row">
-        <div class="check pending"></div>
-        <div><div class="label">SPF 50 Sunscreen</div></div>
+    </div>
+    <div id="steps">
+      <div class="step live" data-k="0">
+        <div class="rule"></div>
+        <h3>Your routine, in order</h3>
+        <p>Add what you own and Regimen sorts it the way it should go on: cleanser, treatments, moisturizer, sunscreen. Morning and evening stay separate, and anything on a schedule only appears on the days it's due.</p>
+      </div>
+      <div class="step" data-k="1">
+        <div class="rule"></div>
+        <h3>Clashes, caught early</h3>
+        <p>Pure vitamin C needs a low pH that niacinamide raises. Benzoyl peroxide deactivates a retinoid layered over it. Regimen flags these the moment both products land in one routine, and says why in a sentence you can act on.</p>
+      </div>
+      <div class="step" data-k="2">
+        <div class="rule"></div>
+        <h3>A scan that stays on your phone</h3>
+        <p>Photograph your face and the analysis runs on-device with Core ML, giving a 0 to 100 score and a read on each zone. The photo is never uploaded for scoring, never sent to us, and never used to train anything.</p>
+      </div>
+      <div class="step" data-k="3">
+        <div class="rule"></div>
+        <h3>Proof it's working, or isn't</h3>
+        <p>The trend chart marks the day you started each product, so a change in your skin lines up against a change in your routine instead of a vague feeling that things are better.</p>
+      </div>
+      <div class="step" data-k="4">
+        <div class="rule"></div>
+        <h3>Reorder before you run out</h3>
+        <p>It learns how fast you get through a bottle from your own check-offs and predicts the day it runs dry, so you replace it in time instead of a week late.</p>
       </div>
     </div>
   </div>
 </section>
 
-<footer class="wrap">
-  <div class="footer-inner">
-    <div class="brand">
-      <img src="assets/icon.png" alt="Regimen icon">
-      <span class="wordmark">Regimen</span>
+<section class="band" id="clash">
+  <div class="wrap">
+    <div class="head rv">
+      <p class="eyebrow">Try it here</p>
+      <h2>Pick two actives.</h2>
+      <p>Regimen checks your routine against these pairs. Tap any two.</p>
     </div>
-    <div class="footer-links">
-      <a href="privacy-policy.html">Privacy Policy</a>
-      <a href="mailto:alecagayan24@gmail.com">Contact</a>
-      <span style="color:var(--text-secondary); font-size:13.5px;">© 2026 Regimen</span>
+    <div class="demo rv" style="margin-top:34px">
+      <span class="demo-label">In the same routine</span>
+      <div class="chips" id="chips"></div>
+      <div class="verdict" id="verdict"><p class="idle">Choose two to see what Regimen would say.</p></div>
     </div>
+  </div>
+</section>
+
+<section class="band" id="privacy">
+  <div class="wrap privacy rv" id="sealWrap">
+    <svg class="seal" viewBox="0 0 120 120" fill="none" aria-hidden="true">
+      <circle class="dash" style="--len:345" cx="60" cy="60" r="55" stroke="var(--green)" stroke-width="1.5" opacity=".45"/>
+      <path class="dash" style="--len:200" d="M60 24 L88 37 V62c0 18-12 28-28 34-16-6-28-16-28-34V37z" stroke="var(--green)" stroke-width="2" stroke-linejoin="round"/>
+      <path class="dash" style="--len:40" d="M48 60l9 9 17-18" stroke="var(--green)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div>
+      <p class="eyebrow">Privacy</p>
+      <h2>The scan never leaves your iPhone.</h2>
+      <p style="margin-top:16px; color:var(--ink-2); max-width:56ch">Skin analysis runs entirely on-device through Core ML. Your photo isn't uploaded to be scored, isn't sent to us, and isn't used to train a model. Only the resulting number and zone summary sync, so your history follows you to a new phone. Export everything as JSON whenever you like, and delete your account from inside the app.</p>
+      <p style="margin-top:20px"><a href="privacy-policy" style="color:var(--green); font-weight:600; text-decoration:none">Read the full privacy policy →</a></p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <a class="mark" href="#top" style="font-size:16px"><img src="assets/icon.png" alt="" style="width:22px;height:22px;border-radius:6px">Regimen</a>
+    <span class="sp"></span>
+    <a href="privacy-policy">Privacy</a>
+    <a href="https://github.com/alecagayan/Regimen">GitHub</a>
+    <span style="color:var(--ink-3)">© 2026 Alec Agayan</span>
   </div>
 </footer>
 
+<script>
+(function(){
+  'use strict';
+  var reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* nav hairline on scroll */
+  var nav = document.getElementById('nav');
+  addEventListener('scroll', function(){
+    nav.classList.toggle('stuck', scrollY > 8);
+  }, {passive:true});
+
+  /* generic reveal */
+  var rvs = document.querySelectorAll('.rv');
+  if (reduce) { rvs.forEach(function(e){ e.classList.add('in'); }); }
+  else {
+    var ro = new IntersectionObserver(function(es){
+      es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('in'); ro.unobserve(e.target); } });
+    }, {rootMargin:'0px 0px -12% 0px'});
+    rvs.forEach(function(e){ ro.observe(e); });
+  }
+
+  /* privacy seal draws once in view */
+  var sw = document.getElementById('sealWrap');
+  if (sw) {
+    if (reduce) sw.classList.add('reveal-on');
+    else {
+      var so = new IntersectionObserver(function(es){
+        es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('reveal-on'); so.unobserve(e.target); } });
+      }, {threshold:.4});
+      so.observe(sw);
+    }
+  }
+
+  /* scrollytelling: the phone follows whichever step is centred */
+  var steps  = [].slice.call(document.querySelectorAll('#steps .step'));
+  var frames = [].slice.call(document.querySelectorAll('#screen2 img'));
+  function show(k){
+    frames.forEach(function(f){ f.classList.toggle('on', f.dataset.k === String(k)); });
+    steps.forEach(function(s){ s.classList.toggle('live', s.dataset.k === String(k)); });
+  }
+  if (steps.length && !reduce) {
+    var io = new IntersectionObserver(function(es){
+      es.forEach(function(e){ if (e.isIntersecting) show(e.target.dataset.k); });
+    }, {rootMargin:'-46% 0px -46% 0px'});
+    steps.forEach(function(s){ io.observe(s); });
+  }
+
+  /* ---- clash checker: same pairs the app uses (ConflictChecker.swift) ---- */
+  var TAGS = [
+    {id:'retinoid',   label:'Retinoid'},
+    {id:'acid',       label:'Exfoliating acid'},
+    {id:'purec',      label:'Pure vitamin C'},
+    {id:'derivc',     label:'Vitamin C derivative'},
+    {id:'niacinamide',label:'Niacinamide'},
+    {id:'copper',     label:'Copper peptide'},
+    {id:'bp',         label:'Benzoyl peroxide'}
+  ];
+  var PAIRS = {
+    'acid|retinoid':   'Combining retinoids with exfoliating acids in the same routine raises the risk of irritation and a compromised skin barrier.',
+    'copper|retinoid': 'Copper peptides can destabilize retinoids, reducing the effectiveness of both when used together.',
+    'acid|copper':     'Exfoliating acids can strip away copper peptides before they have a chance to bind to skin.',
+    'niacinamide|purec':'Pure vitamin C (L-ascorbic acid) needs a low pH to stay stable, and niacinamide can raise that pH. Vitamin C derivatives don’t have this stability issue, so they aren’t flagged here.',
+    'bp|retinoid':     'Benzoyl peroxide can oxidize and deactivate retinoids when layered together. Most routines use one in the morning and the other at night.'
+  };
+  var picked = [];
+  var chipBox = document.getElementById('chips');
+  var out = document.getElementById('verdict');
+
+  TAGS.forEach(function(t){
+    var b = document.createElement('button');
+    b.className = 'chip'; b.type = 'button'; b.textContent = t.label;
+    b.setAttribute('aria-pressed','false'); b.dataset.id = t.id;
+    b.addEventListener('click', function(){ toggle(t.id); });
+    chipBox.appendChild(b);
+  });
+
+  function toggle(id){
+    var i = picked.indexOf(id);
+    if (i > -1) picked.splice(i,1);
+    else { picked.push(id); if (picked.length > 2) picked.shift(); }
+    chipBox.querySelectorAll('.chip').forEach(function(c){
+      c.setAttribute('aria-pressed', picked.indexOf(c.dataset.id) > -1 ? 'true' : 'false');
+    });
+    render();
+  }
+
+  function render(){
+    if (picked.length < 2){
+      out.innerHTML = '<p class="idle">Choose two to see what Regimen would say.</p>';
+      return;
+    }
+    var key = picked.slice().sort().join('|');
+    var reason = PAIRS[key];
+    var a = TAGS.filter(function(t){return t.id===picked[0]})[0].label;
+    var b = TAGS.filter(function(t){return t.id===picked[1]})[0].label;
+    out.innerHTML = reason
+      ? '<div class="verdict-in warn"><span class="dot">!</span><div><h4>' + a + ' + ' + b + '</h4><p>' + reason + '</p></div></div>'
+      : '<div class="verdict-in ok"><span class="dot">✓</span><div><h4>No known clash</h4><p>' + a + ' and ' + b + ' have no flagged interaction. Regimen would leave this routine alone.</p></div></div>';
+  }
+
+  /* a nudge so the demo isn't a dead box on arrival */
+  var demoSeen = false;
+  var dio = new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      if (e.isIntersecting && !demoSeen){
+        demoSeen = true;
+        if (!reduce) setTimeout(function(){ toggle('purec'); setTimeout(function(){ toggle('niacinamide'); }, 420); }, 260);
+      }
+    });
+  }, {threshold:.5});
+  dio.observe(document.getElementById('clash'));
+})();
+</script>
 </body>
 </html>
