@@ -5,6 +5,7 @@
 
 import CoreML
 import SwiftUI
+import os
 
 /// Everything a scan can surface to the user, all from the SkinScanModel
 /// segmentation mask. (An under-eye dark-circle classifier was tried as a
@@ -43,6 +44,25 @@ enum FindingKind: String, CaseIterable, Codable, Hashable {
         case .whitehead: .mint
         }
     }
+
+    /// How much one flagged cell of this kind counts against the skin
+    /// score, and how much weight it carries when ranking what to
+    /// recommend. A blemish is the reference point at 1.0; a dark spot is
+    /// half as urgent, and congestion (blackheads/whiteheads) less again.
+    ///
+    /// These exact values feed the score calibration in
+    /// `SkinScanService.weightedCoverage`, so they must stay in sync with
+    /// RegimenSkinModel/src/segmentation_dataset.py's CLASS_WEIGHTS -- they
+    /// live here rather than on `LesionClass` only so the recommendation
+    /// side can reach them without knowing about mask channels.
+    var severityWeight: Double {
+        switch self {
+        case .blemish: 1.0
+        case .spot: 0.5
+        case .blackhead: 0.3
+        case .whitehead: 0.3
+        }
+    }
 }
 
 /// The segmentation mask's channels. Order and weights must match
@@ -62,14 +82,10 @@ enum LesionClass: Int, CaseIterable {
         }
     }
 
-    var severityWeight: Double {
-        switch self {
-        case .blemish: 1.0
-        case .spot: 0.5
-        case .blackhead: 0.3
-        case .whitehead: 0.3
-        }
-    }
+    /// Delegates to the finding kind so the score calibration and the
+    /// recommendation ranking can never drift apart on two copies of the
+    /// same numbers.
+    var severityWeight: Double { kind.severityWeight }
 }
 
 /// Face regions used to localize findings in plain language ("2 blemish
@@ -199,7 +215,7 @@ final class SkinScanService {
             throw SkinScanError.noFaceDetected
         }
 
-        print("SkinScanService faceBox \(faceBox.integralDescription), crop \(faceRect.integralDescription)")
+        AppLog.scan.debug("faceBox \(faceBox.integralDescription, privacy: .public), crop \(faceRect.integralDescription, privacy: .public)")
 
         let input = try SkinScanModelInput(imageWith: faceCGImage)
         let output = try await maskModel!.prediction(input: input)
@@ -219,9 +235,9 @@ final class SkinScanService {
         for lesionClass in LesionClass.allCases {
             let peak = probabilities[lesionClass.rawValue].max() ?? 0
             let shown = displayBinary[lesionClass.rawValue].lazy.filter { $0 }.count
-            print("SkinScanService \(lesionClass.kind.singular): peak \(String(format: "%.2f", peak)), \(shown) cells shown")
+            AppLog.scan.debug("\(lesionClass.kind.singular, privacy: .public): peak \(peak, format: .fixed(precision: 2), privacy: .public), \(shown, privacy: .public) cells shown")
         }
-        print("SkinScanService: coverage \(String(format: "%.4f", coverage)) -> score \(String(format: "%.0f", score))")
+        AppLog.scan.debug("coverage \(coverage, format: .fixed(precision: 4), privacy: .public) -> score \(score, format: .fixed(precision: 0), privacy: .public)")
 
         let attributes = await SkinAttributeService.shared.classify(faceCGImage: faceCGImage)
 
@@ -269,7 +285,7 @@ final class SkinScanService {
         let classAxis = shape.firstIndex(of: classCount)
         let spatialAxes = shape.indices.filter { shape[$0] == maskSize }
         guard spatialAxes.count == 2 else {
-            print("SkinScanService: unexpected mask shape \(shape), skipping decode")
+            AppLog.scan.error("unexpected mask shape \(shape, privacy: .public), skipping decode")
             return [[Double]](repeating: [Double](repeating: 0, count: maskSize * maskSize), count: classCount)
         }
 

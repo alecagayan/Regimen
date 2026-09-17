@@ -5,6 +5,7 @@
 
 import StoreKit
 import SwiftUI
+import os
 
 /// Shown whenever a free account taps a premium-gated feature. "Subscribe"
 /// runs a real StoreKit 2 purchase (see `SubscriptionService`) -- tested
@@ -30,7 +31,7 @@ struct PaywallView: View {
         ("wand.and.stars", "Auto-Built Routine", "A complete AM/PM routine assembled from your scan results and the catalog."),
         ("square.grid.2x2", "Per-Zone Progress", "See which parts of your face are improving fastest, and which need attention."),
         ("apps.iphone", "Home Screen Widget", "Today's routine and your streak, right on your home screen."),
-        ("arrow.clockwise.heart", "Streak Restores", "Missed a day? Bring your streak back — one restore every \(AppData.daysBetweenStreakRestores) days."),
+        ("arrow.clockwise.heart", "Streak Restores", "Bring a broken streak back, once every \(AppData.daysBetweenStreakRestores) days."),
     ]
 
     private var monthlyProduct: StoreKit.Product? { subscription.product(for: .monthly) }
@@ -56,10 +57,10 @@ struct PaywallView: View {
         switch selectedPlan {
         case .monthly:
             guard let monthlyProduct else { return "Subscribe" }
-            return "Subscribe — \(monthlyProduct.displayPrice)/month"
+            return "Subscribe for \(monthlyProduct.displayPrice)/month"
         case .yearly:
             guard let yearlyProduct else { return "Subscribe" }
-            return "Subscribe — \(yearlyProduct.displayPrice)/year"
+            return "Subscribe for \(yearlyProduct.displayPrice)/year"
         }
     }
 
@@ -88,7 +89,7 @@ struct PaywallView: View {
                     }
                     .padding(.top, Theme.Spacing.lg)
 
-                    Text("Lock in today's price for as long as you stay subscribed — it goes up as more premium features are added.")
+                    Text("Lock in today's price for as long as you stay subscribed.")
                         .font(.rowSubtitle)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -142,10 +143,24 @@ struct PaywallView: View {
                                 .multilineTextAlignment(.center)
                         }
 
-                        Text("Cancel anytime in Settings. Payment is charged to your Apple ID.")
+                        // The full auto-renewal disclosure. The previous
+                        // one line named neither the renewal behaviour nor
+                        // the cancellation deadline, both of which
+                        // Guideline 3.1.2 requires be stated in the app.
+                        Text("Subscriptions renew automatically unless cancelled at least 24 hours before the end of the current period. Payment is charged to your Apple ID at confirmation. Manage or cancel in your Apple ID settings.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
+
+                        // Both links are mandatory on a subscription
+                        // screen, and neither existed anywhere in the app.
+                        HStack(spacing: Theme.Spacing.xs) {
+                            Link("Terms of Use", destination: LegalLinks.termsOfUse)
+                            Text("·").foregroundStyle(.secondary)
+                            Link("Privacy Policy", destination: LegalLinks.privacyPolicy)
+                        }
+                        .font(.caption.weight(.semibold))
+                        .tint(Color.brand)
                     }
                     .padding(.horizontal, Theme.Spacing.lg)
                     .padding(.bottom, Theme.Spacing.xl)
@@ -184,7 +199,7 @@ struct PaywallView: View {
     private func planCard(plan: SubscriptionPlan, title: String, price: String?, subtitle: String, badge: String?) -> some View {
         let isSelected = selectedPlan == plan
         return Button {
-            withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) { selectedPlan = plan }
+            withAnimation(Motion.toggle) { selectedPlan = plan }
         } label: {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
@@ -196,7 +211,7 @@ struct PaywallView: View {
                         StatusChip(text: badge, tint: Color.brand)
                     }
                 }
-                Text(price ?? "—")
+                Text(price ?? "...")
                     .font(.metric)
                     .foregroundStyle(isSelected ? Color.brand : .primary)
                 Text(subtitle)
@@ -222,15 +237,19 @@ struct PaywallView: View {
 
     private func subscribe() {
         errorMessage = nil
+        Analytics.track(.purchaseStarted(plan: selectedPlan.rawValue))
         Task {
             do {
                 let purchased = try await subscription.purchase(selectedPlan)
+                // A cancelled or pending purchase is a legitimate outcome,
+                // not a completion -- only the entitled path counts.
                 guard purchased else { return }
+                Analytics.track(.purchaseCompleted(plan: selectedPlan.rawValue))
                 await appData.setPremium(true)
                 dismiss()
             } catch {
-                print("PaywallView.subscribe failed: \(error)")
-                errorMessage = "Something went wrong — please try again."
+                AppLog.purchases.error("subscribe failed: \(error.localizedDescription, privacy: .public)")
+                errorMessage = "Something went wrong. Please try again."
             }
         }
     }
@@ -247,8 +266,8 @@ struct PaywallView: View {
                     errorMessage = "No previous purchase found for this Apple ID."
                 }
             } catch {
-                print("PaywallView.restore failed: \(error)")
-                errorMessage = "Couldn't restore purchases — please try again."
+                AppLog.purchases.error("restore failed: \(error.localizedDescription, privacy: .public)")
+                errorMessage = "Couldn't restore purchases. Please try again."
             }
         }
     }

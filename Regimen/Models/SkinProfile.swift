@@ -51,9 +51,9 @@ enum RoutineLength: String, CaseIterable, Identifiable, Codable {
 
     var detail: String {
         switch self {
-        case .short: "Just the essentials — cleanse, treat, moisturize, protect"
-        case .medium: "Adds a toner for a fuller routine"
-        case .long: "The complete routine, including eye care and a facial oil"
+        case .short: "Cleanse, treat, moisturize, protect"
+        case .medium: "Adds a toner"
+        case .long: "Everything, including eye care and facial oil"
         }
     }
 }
@@ -69,13 +69,25 @@ enum RoutineLength: String, CaseIterable, Identifiable, Codable {
 /// migration, and keeping it local means the quiz needs no new table to
 /// work. The tradeoff is that it doesn't follow the account to another
 /// device -- the quiz simply asks again there, pre-filled with defaults.
-struct SkinProfile: Codable, Equatable {
+struct SkinProfile: Codable, Equatable, Hashable {
     var skinType: SkinType = .combination
     var sensitivity: SkinSensitivity = .notSensitive
     var experience: ActivesExperience = .beginner
     var routineLength: RoutineLength = .medium
 
     var isSensitive: Bool { sensitivity == .sensitive }
+
+    /// Whether suggestions should steer away from `ConflictTag.isDemanding`
+    /// actives. Both reasons land in the same place: skin that reacts
+    /// easily and skin that has never met a retinoid both do better
+    /// starting on something gentler and earning the stronger option.
+    ///
+    /// Shared by `RecommendationEngine` and `RoutineBuilderEngine` so the
+    /// "what to use" cards and the built routine agree on who's ready for
+    /// what.
+    var prefersGentleActives: Bool {
+        isSensitive || experience == .beginner
+    }
 
     private static let storageKey = "skinProfile"
 

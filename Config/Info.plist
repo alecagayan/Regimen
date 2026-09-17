@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Registers regimen:// so the widget's tap targets reach the app.
+	     Every other Info.plist key is still generated from build settings
+	     (GENERATE_INFOPLIST_FILE stays on and merges into this file);
+	     this exists only because CFBundleURLTypes is an array and there
+	     is no INFOPLIST_KEY_ build setting that can express one. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.alecagayan.Regimen</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>regimen</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

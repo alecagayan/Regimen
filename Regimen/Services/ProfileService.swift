@@ -58,4 +58,20 @@ enum ProfileService {
             .eq("id", value: userID)
             .execute()
     }
+
+    /// Persists the routine quiz's answers to the account, so the same
+    /// person gets the same advice on every device (see
+    /// `supabase/skin_profile.sql`).
+    static func setSkinProfile(userID: UUID, profile: SkinProfile) async throws {
+        try await SupabaseManager.client
+            .from(table)
+            .update([
+                "skin_type": profile.skinType.rawValue,
+                "skin_sensitivity": profile.sensitivity.rawValue,
+                "actives_experience": profile.experience.rawValue,
+                "routine_length": profile.routineLength.rawValue,
+            ])
+            .eq("id", value: userID)
+            .execute()
+    }
 }

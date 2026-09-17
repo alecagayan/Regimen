@@ -31,7 +31,7 @@ struct PillToggle<Option: Hashable & CaseIterable & Identifiable>: View where Op
                     }
                     .contentShape(Capsule())
                     .onTapGesture {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        withAnimation(Motion.toggle) {
                             selection = option
                         }
                     }

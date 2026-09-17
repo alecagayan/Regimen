@@ -31,11 +31,19 @@ enum StreakCalculator {
     static func compute(
         from logs: [UsageLog],
         restores: [StreakRestore] = [],
+        products: [Product] = [],
         historyLength: Int = 7,
         calendar: Calendar = .current,
         now: Date = .now
     ) -> Result {
-        let countedDays = countedDays(logs: logs, restores: restores, calendar: calendar)
+        var countedDays = countedDays(logs: logs, restores: restores, calendar: calendar)
+        // Rest days count. Once products can be scheduled (Mon/Wed/Fri, say)
+        // there are days with genuinely nothing due, and treating those as
+        // misses would mean the schedule feature actively broke streaks for
+        // anyone who used it.
+        countedDays.formUnion(
+            restDays(products: products, historyLength: historyLength, calendar: calendar, now: now)
+        )
         let today = calendar.startOfDay(for: now)
 
         var streak = 0
@@ -54,6 +62,34 @@ enum StreakCalculator {
         }
 
         return Result(currentStreak: streak, recentDays: recentDays)
+    }
+
+    /// Days in the recent window where no active product was scheduled at
+    /// all, so there was nothing the user could have checked off.
+    ///
+    /// Bounded to the streak window rather than computed open-endedly: an
+    /// empty cabinet would otherwise make every day in history a rest day
+    /// and report an infinite streak.
+    private static func restDays(
+        products: [Product],
+        historyLength: Int,
+        calendar: Calendar,
+        now: Date
+    ) -> Set<Date> {
+        let active = products.filter { !$0.isArchived }
+        guard !active.isEmpty else { return [] }
+
+        let today = calendar.startOfDay(for: now)
+        // Look back further than the dot grid so a streak can survive a
+        // rest day that falls outside the visible week.
+        let window = max(historyLength, 1) * 10
+        return Set(
+            (0..<window).compactMap { offset -> Date? in
+                guard let day = calendar.date(byAdding: .day, value: -offset, to: today) else { return nil }
+                let anythingDue = active.contains { $0.isScheduled(on: day, calendar: calendar) }
+                return anythingDue ? nil : day
+            }
+        )
     }
 
     /// Every day that counts toward a streak: days with a usage log, plus

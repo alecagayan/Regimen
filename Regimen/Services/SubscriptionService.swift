@@ -5,6 +5,7 @@
 
 import Foundation
 import StoreKit
+import os
 
 enum SubscriptionError: Error {
     case failedVerification
@@ -87,7 +88,7 @@ final class SubscriptionService {
                 products[plan] = product
             }
         } catch {
-            print("SubscriptionService.loadProducts failed: \(error)")
+            AppLog.purchases.error("loadProducts failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -142,7 +143,7 @@ final class SubscriptionService {
         do {
             restoreCreditProduct = try await StoreKit.Product.products(for: [restoreCreditProductID]).first
         } catch {
-            print("SubscriptionService.loadRestoreCreditProduct failed: \(error)")
+            AppLog.purchases.error("loadRestoreCreditProduct failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 

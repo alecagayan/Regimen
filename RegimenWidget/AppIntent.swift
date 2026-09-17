@@ -15,7 +15,7 @@ enum RoutineTimeSelection: String, AppEnum {
 
     static var typeDisplayRepresentation: TypeDisplayRepresentation = "Routine"
     static var caseDisplayRepresentations: [RoutineTimeSelection: DisplayRepresentation] = [
-        .auto: DisplayRepresentation(title: "Auto (AM before noon, PM after)"),
+        .auto: DisplayRepresentation(title: "Auto (follows your changeover time)"),
         .am: DisplayRepresentation(title: "Always show AM"),
         .pm: DisplayRepresentation(title: "Always show PM"),
     ]

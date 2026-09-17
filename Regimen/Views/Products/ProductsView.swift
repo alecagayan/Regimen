@@ -11,11 +11,28 @@ struct ProductsView: View {
 
     @State private var showingAddSheet = false
     @State private var editingProduct: Product?
+    @State private var detailProduct: Product?
+    @State private var showingEmpties = false
     @State private var showArchived = false
     @State private var showingProfile = false
+    /// Held while the confirmation is up. `role: .destructive` on a Menu
+    /// button only colours it red -- it doesn't prompt -- so deleting a
+    /// product used to be a single mis-tap that also cascaded away every
+    /// usage log attached to it (see `on delete cascade` in schema.sql).
+    @State private var productPendingDeletion: Product?
+    @State private var searchText = ""
+    @State private var sortOrder: CabinetSort = .name
 
     private var visibleProducts: [Product] {
-        appData.products.filter { showArchived || !$0.isArchived }
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return appData.products
+            .filter { showArchived || !$0.isArchived }
+            .filter { product in
+                guard !query.isEmpty else { return true }
+                return product.name.lowercased().contains(query)
+                    || product.brand.lowercased().contains(query)
+            }
+            .sorted(by: sortOrder.comparator)
     }
 
     private var subtitle: String? {
@@ -40,6 +57,13 @@ struct ProductsView: View {
                         .accessibilityLabel("Profile and settings")
                     }
 
+                    // Only once there's enough in the cabinet for finding
+                    // something to be a real problem -- a search field above
+                    // three products is just clutter.
+                    if appData.products.count >= 6 {
+                        cabinetControls
+                    }
+
                     if visibleProducts.isEmpty {
                         EmptyStateView(
                             icon: "cross.case",
@@ -56,46 +80,32 @@ struct ProductsView: View {
                                 ForEach(visibleProducts) { product in
                                     ProductRow(
                                         product: product,
+                                        onOpen: { detailProduct = product },
                                         onEdit: { editingProduct = product },
                                         onArchiveToggle: { Task { await toggleArchive(product) } },
-                                        onDelete: { Task { await appData.deleteProduct(product) } }
+                                        onDelete: { productPendingDeletion = product }
                                     )
                                 }
                             }
                             .padding(.horizontal, Theme.Spacing.lg)
                             .padding(.bottom, Theme.Spacing.floatingButtonClearance)
                         }
+                        .refreshable { await appData.loadAll() }
                     }
                 }
                 .background(Color.appBackground.ignoresSafeArea())
 
-                HStack(alignment: .bottom, spacing: Theme.Spacing.sm) {
-                    Button {
-                        showArchived.toggle()
-                    } label: {
-                        Label("Archived", systemImage: showArchived ? "archivebox.fill" : "archivebox")
-                            .font(.rowSubtitle.weight(.semibold))
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(showArchived ? Color.brand : .secondary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
-                    .background(
-                        Capsule().fill(showArchived ? Color.brand.opacity(0.12) : Color.cardSurface)
-                    )
-                    .overlay(Capsule().strokeBorder(Color.subtleBorder, lineWidth: 1))
-
-                    Button {
-                        showingAddSheet = true
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 22, weight: .semibold))
-                            .foregroundStyle(.white)
-                            .frame(width: 58, height: 58)
-                            .background(Color.brand.gradient, in: Circle())
-                            .shadow(color: Color.brand.opacity(0.35), radius: 14, x: 0, y: 8)
-                    }
+                Button {
+                    showingAddSheet = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 58, height: 58)
+                        .background(Color.brand.gradient, in: Circle())
+                        .shadow(color: Color.brand.opacity(0.35), radius: 14, x: 0, y: 8)
                 }
+                .accessibilityLabel("Add a product")
                 .padding(.trailing, Theme.Spacing.lg)
                 .padding(.bottom, Theme.Spacing.md)
             }
@@ -110,13 +120,90 @@ struct ProductsView: View {
             .sheet(isPresented: $showingAddSheet) {
                 ProductEditView(product: nil)
             }
+            .sheet(item: $detailProduct) { product in
+                ProductDetailView(product: product)
+            }
             .sheet(item: $editingProduct) { product in
                 ProductEditView(product: product)
             }
             .sheet(isPresented: $showingProfile) {
                 ProfileSettingsView()
             }
+            .sheet(isPresented: $showingEmpties) {
+                EmptiesView()
+            }
+            .confirmationDialog(
+                productPendingDeletion.map { "Delete \($0.name)?" } ?? "Delete this product?",
+                isPresented: Binding(
+                    get: { productPendingDeletion != nil },
+                    set: { if !$0 { productPendingDeletion = nil } }
+                ),
+                titleVisibility: .visible,
+                presenting: productPendingDeletion
+            ) { product in
+                Button("Delete", role: .destructive) {
+                    Task { await appData.deleteProduct(product) }
+                    productPendingDeletion = nil
+                }
+                Button("Archive Instead") {
+                    Task { await toggleArchive(product) }
+                    productPendingDeletion = nil
+                }
+                Button("Cancel", role: .cancel) { productPendingDeletion = nil }
+            } message: { _ in
+                Text("This also deletes its usage history, which your streak is built from. Archiving keeps the history and hides the product.")
+            }
         }
+    }
+
+    /// Search, sort and the archived filter. The archived toggle used to
+    /// float next to the add button, where a filter reads as a second
+    /// primary action rather than a view option.
+    private var cabinetControls: some View {
+        HStack(spacing: Theme.Spacing.sm) {
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass")
+                    .font(.rowSubtitle)
+                    .foregroundStyle(.secondary)
+                TextField("Search cabinet", text: $searchText)
+                    .font(.rowSubtitle)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                if !searchText.isEmpty {
+                    Button {
+                        searchText = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
+                }
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(Capsule().fill(Color.cardSurface))
+            .overlay(Capsule().strokeBorder(Color.subtleBorder, lineWidth: 1))
+
+            Menu {
+                Picker("Sort", selection: $sortOrder) {
+                    ForEach(CabinetSort.allCases) { option in
+                        Text(option.label).tag(option)
+                    }
+                }
+                Toggle("Show Archived", isOn: $showArchived)
+                Divider()
+                Button("Empties", systemImage: "archivebox") { showingEmpties = true }
+            } label: {
+                Image(systemName: "line.3.horizontal.decrease.circle")
+                    .font(.system(size: 22))
+                    .foregroundStyle(showArchived || sortOrder != .name ? Color.brand : .secondary)
+                    .frame(width: 34, height: 34)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel("Sort and filter")
+        }
+        .padding(.horizontal, Theme.Spacing.lg)
     }
 
     private func toggleArchive(_ product: Product) async {
@@ -126,8 +213,43 @@ struct ProductsView: View {
     }
 }
 
+/// How the cabinet is ordered. Defaults to name because that's what
+/// someone scanning for a specific bottle is looking for; the other two
+/// answer "what am I actually using" and "what did I just buy".
+enum CabinetSort: String, CaseIterable, Identifiable {
+    case name
+    case step
+    case recentlyOpened
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .name: "Name"
+        case .step: "Routine Step"
+        case .recentlyOpened: "Recently Opened"
+        }
+    }
+
+    var comparator: (Product, Product) -> Bool {
+        switch self {
+        case .name:
+            return { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        case .step:
+            return { lhs, rhs in
+                lhs.layerCategory.rank == rhs.layerCategory.rank
+                    ? lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+                    : lhs.layerCategory.rank < rhs.layerCategory.rank
+            }
+        case .recentlyOpened:
+            return { $0.openedDate > $1.openedDate }
+        }
+    }
+}
+
 private struct ProductRow: View {
     let product: Product
+    let onOpen: () -> Void
     let onEdit: () -> Void
     let onArchiveToggle: () -> Void
     let onDelete: () -> Void
@@ -173,6 +295,8 @@ private struct ProductRow: View {
         .cardStyle()
         .opacity(product.isArchived ? 0.6 : 1)
         .contentShape(Rectangle())
-        .onTapGesture(perform: onEdit)
+        // Opens the product, not the edit form -- a form was an odd primary
+        // action for a row whose usage history the app already tracks.
+        .onTapGesture(perform: onOpen)
     }
 }

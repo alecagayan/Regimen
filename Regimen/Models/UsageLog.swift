@@ -12,6 +12,17 @@ enum TimeOfDay: String, Codable, CaseIterable, Identifiable, Hashable {
     case am = "AM"
     case pm = "PM"
     var id: String { rawValue }
+
+    /// Which routine it currently is, using the user's own changeover hour
+    /// (see `RoutineClock`) so the app and the widget on the same home
+    /// screen never disagree about which half of the day it is.
+    static func currentByClock(
+        now: Date = .now,
+        calendar: Calendar = .current,
+        changeoverHour: Int = RoutineClock.changeoverHour
+    ) -> TimeOfDay {
+        RoutineClock.currentTimeOfDay(now: now, calendar: calendar, changeoverHour: changeoverHour)
+    }
 }
 
 /// Maps 1:1 to the `usage_logs` table. One row per check-off in the Routine

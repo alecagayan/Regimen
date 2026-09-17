@@ -5,6 +5,7 @@
 
 import StoreKit
 import SwiftUI
+import os
 
 /// A month calendar of the days the user logged their routine, reached by
 /// tapping the streak badge. Restored days (see `StreakRestore`) are drawn
@@ -32,7 +33,7 @@ struct StreakCalendarView: View {
     }
 
     private var streak: Int {
-        StreakCalculator.compute(from: appData.usageLogs, restores: appData.streakRestores, calendar: calendar).currentStreak
+        StreakCalculator.compute(from: appData.usageLogs, restores: appData.streakRestores, products: appData.products, calendar: calendar).currentStreak
     }
 
     var body: some View {
@@ -257,7 +258,7 @@ struct StreakCalendarView: View {
 
     private var purchaseCreditLabel: String {
         guard let product = subscription.restoreCreditProduct else { return "Buy Extra Restore" }
-        return "Buy Extra Restore — \(product.displayPrice)"
+        return "Buy Extra Restore for \(product.displayPrice)"
     }
 
     // MARK: - Actions
@@ -278,15 +279,15 @@ struct StreakCalendarView: View {
             do {
                 try await appData.purchaseStreakRestoreCredit()
             } catch {
-                print("StreakCalendarView.purchaseCredit failed: \(error)")
-                purchaseErrorMessage = "Something went wrong — please try again."
+                AppLog.purchases.error("restore-credit purchase failed: \(error.localizedDescription, privacy: .public)")
+                purchaseErrorMessage = "Something went wrong. Please try again."
             }
         }
     }
 
     private func step(by months: Int) {
         guard let next = calendar.date(byAdding: .month, value: months, to: visibleMonth) else { return }
-        withAnimation(.easeInOut(duration: 0.2)) { visibleMonth = next }
+        withAnimation(Motion.value) { visibleMonth = next }
     }
 
     // MARK: - Calendar math

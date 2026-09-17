@@ -10,6 +10,7 @@ struct SignInView: View {
     @State private var password = ""
     @State private var errorMessage: String?
     @State private var isSubmitting = false
+    @State private var showingForgotPassword = false
 
     private var isValid: Bool {
         email.contains("@") && !password.isEmpty
@@ -19,6 +20,10 @@ struct SignInView: View {
         ScrollView {
             VStack(spacing: Theme.Spacing.lg) {
                 AuthBranding(title: "Welcome Back", subtitle: "Sign in to pick up where you left off.")
+
+                AppleSignInButton(errorMessage: $errorMessage)
+
+                AuthDivider()
 
                 VStack(spacing: Theme.Spacing.sm) {
                     AuthField(title: "Email", text: $email, keyboardType: .emailAddress, textContentType: .emailAddress)
@@ -40,11 +45,21 @@ struct SignInView: View {
                 }
                 .buttonStyle(.primary)
                 .disabled(!isValid || isSubmitting)
+
+                Button("Forgot password?") {
+                    showingForgotPassword = true
+                }
+                .font(.rowSubtitle.weight(.medium))
+                .foregroundStyle(Color.brand)
             }
             .padding(Theme.Spacing.lg)
         }
         .background(Color.appBackground.ignoresSafeArea())
         .scrollDismissesKeyboard(.interactively)
+        .sheet(isPresented: $showingForgotPassword) {
+            // Carries the typed address across so it isn't retyped.
+            ForgotPasswordView(email: email)
+        }
     }
 
     private func submit() {

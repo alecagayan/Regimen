@@ -14,11 +14,25 @@ import SwiftUI
 /// wizard for four questions is friction, not thoroughness.
 struct RoutineQuizView: View {
     /// Handed the finished profile; the caller presents the built routine.
-    var onComplete: (SkinProfile) -> Void
+    /// Nil when the quiz is opened just to review or change the answers
+    /// (from Settings), where saving is the whole point and there's nothing
+    /// to present afterward.
+    var onComplete: ((SkinProfile) -> Void)?
 
+    @Environment(AppData.self) private var appData
     @Environment(\.dismiss) private var dismiss
-    /// Pre-filled from last time, so a repeat build is two taps.
-    @State private var profile = SkinProfile.load()
+    /// Pre-filled from the account's saved answers so a repeat build is two
+    /// taps -- falling back to this device's local copy, then to
+    /// `SkinProfile`'s cautious defaults.
+    @State private var profile: SkinProfile?
+
+    private var answers: SkinProfile {
+        profile ?? appData.effectiveSkinProfile
+    }
+
+    private var actionTitle: String {
+        onComplete == nil ? "Save" : "Build My Routine"
+    }
 
     var body: some View {
         NavigationStack {
@@ -33,8 +47,8 @@ struct RoutineQuizView: View {
                             optionRow(
                                 title: type.rawValue,
                                 detail: type.detail,
-                                isSelected: profile.skinType == type
-                            ) { profile.skinType = type }
+                                isSelected: answers.skinType == type
+                            ) { update { $0.skinType = type } }
                         }
                     }
 
@@ -45,8 +59,8 @@ struct RoutineQuizView: View {
                                 detail: option == .sensitive
                                     ? "Stinging, redness, or irritation from new products"
                                     : "New products don't usually bother it",
-                                isSelected: profile.sensitivity == option
-                            ) { profile.sensitivity = option }
+                                isSelected: answers.sensitivity == option
+                            ) { update { $0.sensitivity = option } }
                         }
                     }
 
@@ -57,8 +71,8 @@ struct RoutineQuizView: View {
                                 detail: option == .beginner
                                     ? "Little or no experience with retinoids or acids"
                                     : "Comfortable with retinoids, acids, or vitamin C",
-                                isSelected: profile.experience == option
-                            ) { profile.experience = option }
+                                isSelected: answers.experience == option
+                            ) { update { $0.experience = option } }
                         }
                     }
 
@@ -67,20 +81,26 @@ struct RoutineQuizView: View {
                             optionRow(
                                 title: length.rawValue,
                                 detail: length.detail,
-                                isSelected: profile.routineLength == length
-                            ) { profile.routineLength = length }
+                                isSelected: answers.routineLength == length
+                            ) { update { $0.routineLength = length } }
                         }
                     }
 
                     Button {
-                        profile.save()
-                        onComplete(profile)
+                        let finished = answers
+                        Analytics.track(.quizCompleted)
+                        Task { await appData.saveSkinProfile(finished) }
+                        if let onComplete {
+                            onComplete(finished)
+                        } else {
+                            dismiss()
+                        }
                     } label: {
-                        Label("Build My Routine", systemImage: "wand.and.stars")
+                        Label(actionTitle, systemImage: onComplete == nil ? "checkmark" : "wand.and.stars")
                     }
                     .buttonStyle(.primary)
 
-                    Text("Answers are kept on this device and only shape which products get suggested.")
+                    Text("Answers are saved to your account and only shape which products get suggested.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .center)
@@ -97,6 +117,16 @@ struct RoutineQuizView: View {
                 }
             }
         }
+    }
+
+    /// Edits a copy of whatever is currently showing, so the first tap
+    /// seeds `profile` from the account's answers rather than from a blank
+    /// struct -- otherwise answering one question would silently reset the
+    /// other three to their defaults.
+    private func update(_ change: (inout SkinProfile) -> Void) {
+        var updated = answers
+        change(&updated)
+        profile = updated
     }
 
     private func question<Content: View>(
@@ -119,7 +149,7 @@ struct RoutineQuizView: View {
         action: @escaping () -> Void
     ) -> some View {
         Button {
-            withAnimation(.spring(response: 0.25, dampingFraction: 0.8)) { action() }
+            withAnimation(Motion.toggle) { action() }
         } label: {
             HStack(spacing: Theme.Spacing.md) {
                 VStack(alignment: .leading, spacing: 2) {

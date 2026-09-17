@@ -119,7 +119,7 @@ struct CatalogPickerView: View {
     }
 
     private func toggle(_ brand: String) {
-        withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(Motion.value) {
             if isExpanded(brand) {
                 expandedBrands.remove(brand)
                 collapsedBrands.insert(brand)

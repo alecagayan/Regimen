@@ -6,6 +6,7 @@
 import StoreKit
 import SwiftUI
 import Supabase
+import os
 
 /// The pane behind the profile icon: account info (name, editable; email
 /// and member-since, read-only from the Supabase session), a couple of
@@ -19,8 +20,15 @@ struct ProfileSettingsView: View {
     @State private var name = ""
     @State private var isSavingName = false
     @State private var notificationsEnabled = NotificationManager.shared.remindersEnabled
+    @State private var routineRemindersEnabled = NotificationManager.shared.routineRemindersEnabled
+    @State private var amReminderHour = NotificationManager.shared.amReminderHour
+    @State private var pmReminderHour = NotificationManager.shared.pmReminderHour
+    @State private var changeoverHour = RoutineClock.changeoverHour
     @State private var showingSignOutConfirmation = false
     @State private var showingPaywall = false
+    @State private var showingSkinQuiz = false
+    @State private var exportURL: URL?
+    @State private var analyticsEnabled = Analytics.isEnabled
     @State private var showingManageSubscriptions = false
     @State private var showingDeleteAccountConfirmation = false
     @State private var isDeletingAccount = false
@@ -92,6 +100,18 @@ struct ProfileSettingsView: View {
                     }
                     .padding(.horizontal, Theme.Spacing.lg)
 
+                    // Reachable from inside the app, not only from the
+                    // App Store listing -- an account holder has to be
+                    // able to find the terms they agreed to and the policy
+                    // covering the photos they've stored.
+                    HStack(spacing: Theme.Spacing.xs) {
+                        Link("Terms of Use", destination: LegalLinks.termsOfUse)
+                        Text("·").foregroundStyle(.secondary)
+                        Link("Privacy Policy", destination: LegalLinks.privacyPolicy)
+                    }
+                    .font(.caption.weight(.semibold))
+                    .tint(Color.brand)
+
                     if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
                         Text("Regimen \(version)")
                             .font(.caption)
@@ -126,6 +146,14 @@ struct ProfileSettingsView: View {
                 Button("Delete Account", role: .destructive, action: deleteAccount)
             } message: {
                 Text("This permanently deletes your account, products, photos, and history. This can't be undone.")
+            }
+            .sheet(item: $exportURL) { url in
+                ShareSheet(items: [url])
+            }
+            .sheet(isPresented: $showingSkinQuiz) {
+                // No completion handler: opened from Settings the quiz is
+                // just an editor, with nothing to present afterward.
+                RoutineQuizView()
             }
             .sheet(isPresented: $showingPaywall) {
                 PaywallView()
@@ -228,7 +256,7 @@ struct ProfileSettingsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Reorder Reminders")
                         .font(.rowTitle)
-                    Text("A notification about a week before a product's predicted to run out.")
+                    Text("A week before a product is predicted to run out.")
                         .font(.rowSubtitle)
                         .foregroundStyle(.secondary)
                 }
@@ -238,7 +266,163 @@ struct ProfileSettingsView: View {
             .cardStyle()
             .padding(.horizontal, Theme.Spacing.lg)
             .onChange(of: notificationsEnabled, onNotificationsToggleChanged)
+
+            Toggle(isOn: $routineRemindersEnabled) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Routine Reminders")
+                        .font(.rowTitle)
+                    Text("A daily nudge at your AM and PM times.")
+                        .font(.rowSubtitle)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .tint(Color.brand)
+            .padding(Theme.Spacing.md)
+            .cardStyle()
+            .padding(.horizontal, Theme.Spacing.lg)
+            .onChange(of: routineRemindersEnabled) { _, enabled in
+                NotificationManager.shared.routineRemindersEnabled = enabled
+                NotificationManager.shared.refreshRoutineReminders()
+                if enabled {
+                    Task { await NotificationManager.shared.requestAuthorizationIfNeeded() }
+                }
+            }
+
+            if routineRemindersEnabled {
+                VStack(spacing: Theme.Spacing.sm) {
+                    hourPicker(title: "Morning at", selection: $amReminderHour)
+                    Divider()
+                    hourPicker(title: "Evening at", selection: $pmReminderHour)
+                }
+                .padding(Theme.Spacing.md)
+                .cardStyle()
+                .padding(.horizontal, Theme.Spacing.lg)
+                .onChange(of: amReminderHour) { _, hour in
+                    NotificationManager.shared.amReminderHour = hour
+                    NotificationManager.shared.refreshRoutineReminders()
+                }
+                .onChange(of: pmReminderHour) { _, hour in
+                    NotificationManager.shared.pmReminderHour = hour
+                    NotificationManager.shared.refreshRoutineReminders()
+                }
+            }
+
+            // Night shifts exist. A hardcoded midday boundary showed anyone
+            // working them the wrong half of their routine for their whole
+            // waking shift, in both the app and the widget.
+            VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Day Starts At")
+                        .font(.rowTitle)
+                    Text("When your routine switches from AM to PM. The widget follows this too.")
+                        .font(.rowSubtitle)
+                        .foregroundStyle(.secondary)
+                }
+                Picker("Day starts at", selection: $changeoverHour) {
+                    ForEach(0..<24, id: \.self) { hour in
+                        Text(RoutineClock.label(forHour: hour)).tag(hour)
+                    }
+                }
+                .pickerStyle(.wheel)
+                .frame(height: 110)
+                .clipped()
+            }
+            .padding(Theme.Spacing.md)
+            .cardStyle()
+            .padding(.horizontal, Theme.Spacing.lg)
+            .onChange(of: changeoverHour) { _, hour in
+                RoutineClock.changeoverHour = hour
+            }
+
+            Toggle(isOn: $analyticsEnabled) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Share Usage Data")
+                        .font(.rowTitle)
+                    Text("Anonymous counts of which features get used, stored with your account. Never your photos or scores.")
+                        .font(.rowSubtitle)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .tint(Color.brand)
+            .padding(Theme.Spacing.md)
+            .cardStyle()
+            .padding(.horizontal, Theme.Spacing.lg)
+            .onChange(of: analyticsEnabled) { _, enabled in
+                Analytics.isEnabled = enabled
+            }
+
+            Button {
+                exportURL = DataExportService.write(appData.exportSnapshot())
+            } label: {
+                HStack(spacing: Theme.Spacing.md) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Export Your Data")
+                            .font(.rowTitle)
+                            .foregroundStyle(.primary)
+                        Text("A JSON file of your products, history, and scans.")
+                            .font(.rowSubtitle)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: Theme.Spacing.sm)
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.rowTitle)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(Theme.Spacing.md)
+                .cardStyle()
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, Theme.Spacing.lg)
+
+            // The quiz used to be reachable only by starting a routine
+            // build, so a mis-tapped answer was baked in permanently even
+            // though it shapes every recommendation the app makes.
+            Button {
+                showingSkinQuiz = true
+            } label: {
+                HStack(spacing: Theme.Spacing.md) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Your Skin Profile")
+                            .font(.rowTitle)
+                            .foregroundStyle(.primary)
+                        Text(skinProfileSummary)
+                            .font(.rowSubtitle)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.leading)
+                    }
+                    Spacer(minLength: Theme.Spacing.sm)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(Theme.Spacing.md)
+                .cardStyle()
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, Theme.Spacing.lg)
         }
+    }
+
+    private func hourPicker(title: String, selection: Binding<Int>) -> some View {
+        Picker(title, selection: selection) {
+            ForEach(0..<24, id: \.self) { hour in
+                Text(RoutineClock.label(forHour: hour)).tag(hour)
+            }
+        }
+        .font(.rowTitle)
+    }
+
+    /// Reads back the saved answers so the row shows what's actually in
+    /// effect, rather than making the user open the quiz to find out.
+    private var skinProfileSummary: String {
+        guard appData.hasSkinProfile else {
+            return "Not set. Answers tune what the app recommends."
+        }
+        let profile = appData.effectiveSkinProfile
+        let sensitivity = profile.isSensitive ? "sensitive" : "not sensitive"
+        return "\(profile.skinType.rawValue), \(sensitivity), \(profile.experience.rawValue.lowercased())"
     }
 
     private func loadProfile() async {
@@ -267,8 +451,8 @@ struct ProfileSettingsView: View {
                 try await AuthService.shared.deleteAccount()
                 dismiss()
             } catch {
-                print("ProfileSettingsView.deleteAccount failed: \(error)")
-                deleteAccountErrorMessage = "Couldn't delete your account — please try again."
+                AppLog.auth.error("deleteAccount failed: \(error.localizedDescription, privacy: .public)")
+                deleteAccountErrorMessage = "Couldn't delete your account. Please try again."
             }
         }
     }

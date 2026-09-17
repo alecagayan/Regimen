@@ -19,6 +19,10 @@ struct PrimaryButtonStyle: ButtonStyle {
             .background(Color.brand.gradient, in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
             .opacity(isEnabled ? (configuration.isPressed ? 0.85 : 1) : 0.5)
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            // The press states existed already but nothing animated them,
+            // so the button jumped between sizes. On the app's most-tapped
+            // controls that reads as a glitch rather than as feedback.
+            .motion(Motion.toggle, value: configuration.isPressed)
     }
 }
 
@@ -42,6 +46,7 @@ struct SecondaryButtonStyle: ButtonStyle {
             .background(Color.brand.opacity(0.12), in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
             .opacity(isEnabled ? (configuration.isPressed ? 0.7 : 1) : 0.5)
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .motion(Motion.toggle, value: configuration.isPressed)
     }
 }
 

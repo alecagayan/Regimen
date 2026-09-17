@@ -37,11 +37,12 @@ struct Provider: AppIntentTimelineProvider {
     }
 
     func timeline(for configuration: RegimenWidgetConfigurationIntent, in context: Context) async -> Timeline<RegimenEntry> {
-        // Refreshed at the noon boundary, not on a fixed interval: with
-        // "Auto" selected the widget flips from the AM routine to the PM
-        // one at midday, and without a scheduled reload it would keep
-        // showing the morning list all afternoon. Every other change
-        // (app writes, checkbox taps) calls reloadTimelines directly.
+        // Refreshed at the AM/PM changeover, not on a fixed interval: with
+        // "Auto" selected the widget flips from the morning routine to the
+        // evening one at that hour, and without a scheduled reload it would
+        // keep showing the morning list for the rest of the day. Every
+        // other change (app writes, checkbox taps) calls reloadTimelines
+        // directly.
         Timeline(entries: [currentEntry(configuration)], policy: .after(nextRolloverDate()))
     }
 
@@ -49,12 +50,13 @@ struct Provider: AppIntentTimelineProvider {
         RegimenEntry(date: .now, snapshot: WidgetSharedStore.read(), timeSelection: configuration.timeSelection)
     }
 
-    /// The next noon or midnight, whichever comes first.
+    /// The next changeover or midnight, whichever comes first. The hour is
+    /// the user's own (see `RoutineClock`), read from the App Group.
     private func nextRolloverDate() -> Date {
         let calendar = Calendar.current
         let now = Date.now
-        let noon = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: now)
-        if let noon, noon > now { return noon }
+        let changeover = calendar.date(bySettingHour: WidgetSharedStore.changeoverHour, minute: 0, second: 0, of: now)
+        if let changeover, changeover > now { return changeover }
         return calendar.startOfDay(for: now.addingTimeInterval(86_400))
     }
 }
@@ -68,7 +70,7 @@ struct RegimenEntry: TimelineEntry {
         switch timeSelection {
         case .am: snapshot.amItems
         case .pm: snapshot.pmItems
-        case .auto: isBeforeNoon ? snapshot.amItems : snapshot.pmItems
+        case .auto: isBeforeChangeover ? snapshot.amItems : snapshot.pmItems
         }
     }
 
@@ -76,15 +78,16 @@ struct RegimenEntry: TimelineEntry {
         switch timeSelection {
         case .am: "AM"
         case .pm: "PM"
-        case .auto: isBeforeNoon ? "AM" : "PM"
+        case .auto: isBeforeChangeover ? "AM" : "PM"
         }
     }
 
     var completedCount: Int { items.filter(\.isChecked).count }
     var isComplete: Bool { !items.isEmpty && completedCount == items.count }
 
-    private var isBeforeNoon: Bool {
-        Calendar.current.component(.hour, from: date) < 12
+    /// Before this device's configured AM/PM changeover.
+    private var isBeforeChangeover: Bool {
+        Calendar.current.component(.hour, from: date) < WidgetSharedStore.changeoverHour
     }
 }
 
@@ -230,16 +233,91 @@ struct RegimenWidgetEntryView: View {
     var body: some View {
         Group {
             if !entry.snapshot.isPremium {
-                LockedView()
+                // A Lock Screen complication has no room for the full
+                // upsell, and a truncated paywall on the Lock Screen reads
+                // as a broken widget rather than a locked one.
+                if isAccessory {
+                    Image(systemName: "lock")
+                        .font(.system(size: 14, weight: .semibold))
+                } else {
+                    LockedView()
+                }
             } else {
                 switch family {
+                case .accessoryCircular: accessoryCircularView
+                case .accessoryRectangular: accessoryRectangularView
+                case .accessoryInline: accessoryInlineView
                 case .systemLarge: largeView
                 case .systemMedium: mediumView
                 default: smallView
                 }
             }
         }
-        .containerBackground(WidgetTheme.backgroundGradient, for: .widget)
+        // Accessory families render into a system-tinted, often translucent
+        // slot; painting the app's own gradient behind them fights the Lock
+        // Screen's material and reads as a dark rectangle stuck to it.
+        .containerBackground(for: .widget) {
+            if !isAccessory { WidgetTheme.backgroundGradient }
+        }
+        // Tapping the widget used to open the app on whatever tab was last
+        // used. The check-off buttons are AppIntents and keep their own
+        // handling; this covers every other pixel.
+        .widgetURL(AppDeepLink.routine(timeOfDay: entry.timeOfDay))
+    }
+
+    private var isAccessory: Bool {
+        switch family {
+        case .accessoryCircular, .accessoryRectangular, .accessoryInline: true
+        default: false
+        }
+    }
+
+    // MARK: - Lock Screen and StandBy
+
+    /// Progress as a ring, which is the whole point of the circular slot:
+    /// legible at a glance, at a size where no text would be.
+    private var accessoryCircularView: some View {
+        Gauge(value: Double(entry.completedCount), in: 0...Double(max(entry.items.count, 1))) {
+            Image(systemName: "checklist")
+        } currentValueLabel: {
+            Text("\(entry.completedCount)")
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+        }
+        .gaugeStyle(.accessoryCircularCapacity)
+    }
+
+    /// The rectangular slot is the only accessory family with room for
+    /// words, so it carries what the other two can't: which routine, how
+    /// far through, and the streak.
+    private var accessoryRectangularView: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Text("\(entry.timeOfDay) ROUTINE")
+                .font(.system(size: 11, weight: .semibold))
+                .widgetAccentable()
+            if entry.items.isEmpty {
+                Text("Nothing scheduled")
+                    .font(.system(size: 13, weight: .medium))
+            } else {
+                Text("\(entry.completedCount) of \(entry.items.count) done")
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+            }
+            if entry.snapshot.streak > 0 {
+                Text("\(entry.snapshot.streak)-day streak")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// One line, no styling of its own -- the system renders it beside the
+    /// clock, so anything elaborate here just gets stripped.
+    private var accessoryInlineView: some View {
+        if entry.items.isEmpty {
+            Text("Nothing in your \(entry.timeOfDay) routine")
+        } else {
+            Text("\(entry.timeOfDay): \(entry.completedCount)/\(entry.items.count) done")
+        }
     }
 
     /// Header shared by every size: streak on the left, score on the right.
@@ -386,7 +464,13 @@ struct RegimenWidget: Widget {
         }
         .configurationDisplayName("Routine & Streak")
         .description("Check off today's routine, and keep an eye on your streak and skin score.")
-        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
+        .supportedFamilies([
+            .systemSmall, .systemMedium, .systemLarge,
+            // Lock Screen and StandBy. Streak and "2 of 5 done" are
+            // exactly the glanceable numbers these slots are for, and
+            // reaching them previously meant unlocking and opening the app.
+            .accessoryCircular, .accessoryRectangular, .accessoryInline,
+        ])
     }
 }
 

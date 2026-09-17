@@ -1,0 +1,18 @@
+# Xcode
+build/
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.hmap
+
+# CocoaPods / SPM local state
+.build/
+.swiftpm/
+
+# macOS
+.DS_Store
+
+# Simulator / device logs
+*.ips

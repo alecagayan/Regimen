@@ -26,7 +26,7 @@ struct CategoryProductsView: View {
                     EmptyStateView(
                         icon: tag.icon,
                         title: "Nothing Yet",
-                        message: "No catalog products target \(tag.rawValue) yet."
+                        message: "Nothing in the catalog targets \(tag.rawValue) yet."
                     )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
@@ -79,6 +79,16 @@ private struct CategoryProductRow: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
+                }
+                // Flagged before buying, not after. A fragrance or retinoid
+                // warning is only useful while there's still a choice.
+                let flags = IngredientInsights.flags(for: item.ingredients)
+                if !flags.isEmpty {
+                    FlowLayout(spacing: 4) {
+                        ForEach(flags) { flag in
+                            StatusChip(text: flag.kind.label, tint: flag.kind.isCaution ? .orange : .secondary)
+                        }
+                    }
                 }
             }
 

@@ -12,6 +12,9 @@ struct ProductCheckRow: View {
 
     let product: Product
     let timeOfDay: TimeOfDay
+    /// The day this row logs against -- today, or yesterday when the user
+    /// is filling in a routine they did but forgot to check off.
+    var day: Date = .now
     /// This product's position in `LayeringAdvisor.recommendedOrder` for
     /// today's active products — shown as a small step badge so the
     /// recommended application order is visible at a glance, not just
@@ -24,10 +27,7 @@ struct ProductCheckRow: View {
     let hasConflict: Bool
 
     private var isChecked: Bool {
-        let calendar = Calendar.current
-        return appData.usageLogs(for: product).contains {
-            $0.timeOfDay == timeOfDay && calendar.isDateInToday($0.timestamp)
-        }
+        appData.isLogged(product, timeOfDay: timeOfDay, on: day)
     }
 
     var body: some View {
@@ -39,7 +39,7 @@ struct ProductCheckRow: View {
             if !isChecked {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
             }
-            Task { await appData.toggleUsageLog(for: product, timeOfDay: timeOfDay) }
+            Task { await appData.toggleUsageLog(for: product, timeOfDay: timeOfDay, on: day) }
         } label: {
             HStack(spacing: Theme.Spacing.md) {
                 stepBadge
@@ -74,12 +74,17 @@ struct ProductCheckRow: View {
                 ZStack {
                     Circle()
                         .fill(isChecked ? Color.brand : Color.clear)
+                        // The fill grows out of the centre rather than
+                        // fading in, so the tick reads as a thing that
+                        // happened rather than a state that was already true.
+                        .scaleEffect(isChecked ? 1 : 0.6)
                     Circle()
                         .strokeBorder(isChecked ? Color.clear : Color.subtleBorder, lineWidth: 2)
                     if isChecked {
                         Image(systemName: "checkmark")
                             .font(.system(size: 12, weight: .bold))
                             .foregroundStyle(.white)
+                            .transition(.scale(scale: 0.4).combined(with: .opacity))
                     }
                 }
                 .frame(width: 26, height: 26)
@@ -87,9 +92,13 @@ struct ProductCheckRow: View {
             .padding(Theme.Spacing.md)
             .cardStyle()
             .opacity(isChecked ? 0.5 : 1)
+            // Barely perceptible on purpose: enough that the card feels
+            // like it accepted the press, not so much that a list of six
+            // of them looks like it's breathing.
+            .scaleEffect(isChecked ? 0.985 : 1)
         }
         .buttonStyle(.plain)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isChecked)
+        .motion(Motion.toggle, value: isChecked)
         // Without this the row reads out as its four separate pieces
         // ("3", "Salicylic Acid...", "The Ordinary · Treatment", "checked")
         // with no indication it's one tappable control. Collapsing it into

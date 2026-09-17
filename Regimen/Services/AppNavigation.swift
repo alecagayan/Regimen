@@ -40,4 +40,22 @@ final class AppNavigation {
     func select(_ tab: AppTab) {
         selectedTab = tab
     }
+
+    /// Set when a deep link asked for a specific half of the day, so the
+    /// Routine tab can switch its AM/PM toggle to match. One-shot: the
+    /// view consumes and clears it, otherwise it would fight the user's
+    /// own toggling for the rest of the session.
+    var requestedRoutineTime: TimeOfDay?
+
+    /// Applies a destination from a notification tap or a widget tap.
+    func go(to destination: AppDestination) {
+        switch destination {
+        case .routine(let timeOfDay):
+            selectedTab = .routine
+            requestedRoutineTime = timeOfDay
+        case .reorder: selectedTab = .reorder
+        case .progress: selectedTab = .progress
+        case .cabinet: selectedTab = .cabinet
+        }
+    }
 }

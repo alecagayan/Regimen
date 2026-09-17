@@ -45,12 +45,24 @@ enum DepletionPredictor {
         calendar: Calendar = .current,
         now: Date = .now
     ) -> Result {
-        let totalUsedAllTime = usageLogs.reduce(0) { $0 + $1.estimatedAmountUsedML }
-        let remainingML = max(product.sizeInML - totalUsedAllTime, 0)
+        // Only usage since the bottle was opened counts against it.
+        // Summing *every* log ever meant a repurchase could never be
+        // reflected: re-opening the same product carried a year of the
+        // previous bottle's usage forward, so it read as long empty from
+        // the moment it was unwrapped. `openedDate` is the user-editable
+        // "when I actually started this", which makes it exactly the right
+        // boundary -- and makes "I repurchased this" a one-field reset that
+        // keeps the full check-off history intact.
+        let startOfOpenedDay = calendar.startOfDay(for: product.openedDate)
+        let currentBottleLogs = usageLogs.filter { $0.timestamp >= startOfOpenedDay }
+        let totalUsedThisBottle = currentBottleLogs.reduce(0) { $0 + $1.estimatedAmountUsedML }
+        let remainingML = max(product.sizeInML - totalUsedThisBottle, 0)
         let remainingFraction = product.sizeInML > 0 ? min(max(remainingML / product.sizeInML, 0), 1) : 0
 
         let cutoff = calendar.date(byAdding: .day, value: -lookbackDays, to: now) ?? now
-        let recentLogs = usageLogs.filter { $0.timestamp >= cutoff }
+        // Rate is measured from this bottle's own logs too, so a fresh
+        // bottle doesn't inherit a rate computed across a gap.
+        let recentLogs = currentBottleLogs.filter { $0.timestamp >= cutoff }
 
         guard !recentLogs.isEmpty else {
             return Result(averageMLPerDay: nil, predictedEmptyDate: nil, daysRemaining: nil, remainingFraction: remainingFraction)

@@ -23,12 +23,57 @@ struct CatalogProduct: Identifiable, Codable, Hashable {
     /// choosing between five brands' moisturizers doesn't come down to
     /// name alone.
     var productDescription: String?
+    /// Full INCI list, where the catalog has one. The eight `ConflictTag`
+    /// values remain what the conflict engine reasons about; this is the
+    /// raw list behind them, and what makes "does anything I own contain
+    /// fragrance" answerable.
+    var ingredients: [String]
+    /// Retail barcode, for scan-to-add. Nil for the many entries curated by
+    /// hand without one.
+    var barcode: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, brand, name, category
+        case id, brand, name, category, ingredients, barcode
         case suggestedConflictTags = "suggested_conflict_tags"
         case layerCategory = "layer_category"
         case productDescription = "description"
+    }
+
+    init(
+        id: UUID,
+        brand: String,
+        name: String,
+        category: String?,
+        suggestedConflictTags: [ConflictTag],
+        layerCategory: LayerCategory,
+        productDescription: String? = nil,
+        ingredients: [String] = [],
+        barcode: String? = nil
+    ) {
+        self.id = id
+        self.brand = brand
+        self.name = name
+        self.category = category
+        self.suggestedConflictTags = suggestedConflictTags
+        self.layerCategory = layerCategory
+        self.productDescription = productDescription
+        self.ingredients = ingredients
+        self.barcode = barcode
+    }
+
+    /// Columns added after a release decode as absent, so a catalog row
+    /// written before `schedules_and_history.sql` ran still loads.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        brand = try container.decode(String.self, forKey: .brand)
+        name = try container.decode(String.self, forKey: .name)
+        category = try container.decodeIfPresent(String.self, forKey: .category)
+        suggestedConflictTags = try container.decodeIfPresent([ConflictTag].self, forKey: .suggestedConflictTags) ?? []
+        layerCategory = try container.decodeIfPresent(LayerCategory.self, forKey: .layerCategory) ?? .treatment
+        productDescription = try container.decodeIfPresent(String.self, forKey: .productDescription)
+        ingredients = try container.decodeIfPresent([String].self, forKey: .ingredients) ?? []
+        barcode = try container.decodeIfPresent(String.self, forKey: .barcode)
     }
 
     /// Catalog categories that aren't facial skincare at all.

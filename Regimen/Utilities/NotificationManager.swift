@@ -38,6 +38,89 @@ final class NotificationManager {
         }
     }
 
+    // MARK: - Routine reminders
+
+    private let routineRemindersEnabledKey = "routineRemindersEnabled"
+    private let amReminderHourKey = "amReminderHour"
+    private let pmReminderHourKey = "pmReminderHour"
+    private let amReminderIdentifier = "routine-reminder-am"
+    private let pmReminderIdentifier = "routine-reminder-pm"
+
+    /// Nudges at the times the user actually does their routine.
+    ///
+    /// Separate from `remindersEnabled`, which governs reorder and streak
+    /// notifications: someone can reasonably want "you're low on cleanser"
+    /// without wanting to be told to wash their face every morning. Off by
+    /// default, since a daily alert nobody asked for is how an app gets its
+    /// notifications turned off wholesale.
+    var routineRemindersEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: routineRemindersEnabledKey) }
+        set {
+            UserDefaults.standard.set(newValue, forKey: routineRemindersEnabledKey)
+            if !newValue {
+                center.removePendingNotificationRequests(
+                    withIdentifiers: [amReminderIdentifier, pmReminderIdentifier]
+                )
+            }
+        }
+    }
+
+    var amReminderHour: Int {
+        get { UserDefaults.standard.object(forKey: amReminderHourKey) as? Int ?? 8 }
+        set { UserDefaults.standard.set(min(max(newValue, 0), 23), forKey: amReminderHourKey) }
+    }
+
+    var pmReminderHour: Int {
+        get { UserDefaults.standard.object(forKey: pmReminderHourKey) as? Int ?? 21 }
+        set { UserDefaults.standard.set(min(max(newValue, 0), 23), forKey: pmReminderHourKey) }
+    }
+
+    /// Repeating daily reminders, rescheduled from scratch whenever the
+    /// setting or the hours change.
+    func refreshRoutineReminders() {
+        center.removePendingNotificationRequests(
+            withIdentifiers: [amReminderIdentifier, pmReminderIdentifier]
+        )
+        guard routineRemindersEnabled else { return }
+
+        schedule(
+            identifier: amReminderIdentifier,
+            hour: amReminderHour,
+            title: "Morning routine",
+            body: "Time for your AM products.",
+            destination: AppDeepLink.routine(timeOfDay: TimeOfDay.am.rawValue)
+        )
+        schedule(
+            identifier: pmReminderIdentifier,
+            hour: pmReminderHour,
+            title: "Evening routine",
+            body: "Time for your PM products.",
+            destination: AppDeepLink.routine(timeOfDay: TimeOfDay.pm.rawValue)
+        )
+    }
+
+    private func schedule(identifier: String, hour: Int, title: String, body: String, destination: URL?) {
+        var components = DateComponents()
+        components.hour = hour
+        components.minute = 0
+
+        let content = UNMutableNotificationContent()
+        content.title = title
+        content.body = body
+        content.sound = .default
+        // Without this the tap opens whatever tab was last used, which for
+        // a reminder about the evening routine is rarely the evening
+        // routine. See `NotificationRouter`.
+        content.userInfo = Self.routingInfo(destination)
+        content.categoryIdentifier = NotificationRouter.routineCategory
+
+        // `repeats: true` here, unlike the one-shot depletion and streak
+        // reminders: this one fires every day at the same time, so there's
+        // no per-day rescheduling to do.
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+        center.add(UNNotificationRequest(identifier: identifier, content: content, trigger: trigger))
+    }
+
     func requestAuthorizationIfNeeded() async {
         let settings = await center.notificationSettings()
         guard settings.authorizationStatus == .notDetermined else { return }
@@ -76,6 +159,7 @@ final class NotificationManager {
         content.title = "\(product.name) is almost empty"
         content.body = "Estimated to run out around \(Self.dateFormatter.string(from: emptyDate)). Time to reorder."
         content.sound = .default
+        content.userInfo = Self.routingInfo(AppDeepLink.tab("reorder"))
 
         let fireComponents = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
         let trigger = UNCalendarNotificationTrigger(dateMatching: fireComponents, repeats: false)
@@ -100,14 +184,14 @@ final class NotificationManager {
     /// notification can't be skipped conditionally once scheduled, so this
     /// always cancels first and only reschedules a fresh one-off if it's
     /// still actually needed for today.
-    func refreshStreakReminder(usageLogs: [UsageLog], restores: [StreakRestore] = []) {
+    func refreshStreakReminder(usageLogs: [UsageLog], restores: [StreakRestore] = [], products: [Product] = []) {
         center.removePendingNotificationRequests(withIdentifiers: [streakReminderIdentifier])
         guard remindersEnabled else { return }
 
         // Restores have to be included here too: a streak kept alive by a
         // restore is still a streak worth protecting, and computing without
         // them would read it as 0 and silently stop reminding.
-        let streak = StreakCalculator.compute(from: usageLogs, restores: restores)
+        let streak = StreakCalculator.compute(from: usageLogs, restores: restores, products: products)
         // Nothing to protect (streak is 0), or today's already logged
         // (recentDays' last entry) -- either way, no reminder is useful.
         guard streak.currentStreak > 0, streak.recentDays.last == false else { return }
@@ -120,12 +204,23 @@ final class NotificationManager {
 
         let content = UNMutableNotificationContent()
         content.title = "Don't break your streak!"
-        content.body = "You're on a \(streak.currentStreak)-day streak — log today's routine before it resets."
+        content.body = "You're on a \(streak.currentStreak)-day streak. Log today's routine before it resets."
         content.sound = .default
+        // Fires in the evening, so the PM routine is the one to open.
+        content.userInfo = Self.routingInfo(AppDeepLink.routine(timeOfDay: TimeOfDay.pm.rawValue))
+        content.categoryIdentifier = NotificationRouter.routineCategory
 
         let trigger = UNCalendarNotificationTrigger(dateMatching: fireComponents, repeats: false)
         let request = UNNotificationRequest(identifier: streakReminderIdentifier, content: content, trigger: trigger)
         center.add(request)
+    }
+
+    /// `userInfo` payload naming where a tap should land. Empty when the
+    /// URL couldn't be built, which routes nowhere rather than to a wrong
+    /// guess.
+    private static func routingInfo(_ destination: URL?) -> [String: Any] {
+        guard let destination else { return [:] }
+        return [NotificationRouter.destinationKey: destination.absoluteString]
     }
 
     private static let dateFormatter: DateFormatter = {

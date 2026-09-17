@@ -63,6 +63,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		367BCDA1BC6451FF4CFD3829 /* Exceptions for "Regimen" folder in "RegimenWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Services/WidgetSharedTypes.swift,
+			);
+			target = 70D7CDE13043D1090011ACCA /* RegimenWidgetExtension */;
+		};
 		70D7CDF93043D10B0011ACCA /* Exceptions for "RegimenWidget" folder in "RegimenWidgetExtension" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -75,6 +82,9 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		704B66BE30415782009E448B /* Regimen */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				367BCDA1BC6451FF4CFD3829 /* Exceptions for "Regimen" folder in "RegimenWidgetExtension" target */,
+			);
 			path = Regimen;
 			sourceTree = "<group>";
 		};
@@ -527,8 +537,9 @@
 				DEVELOPMENT_TEAM = N92ZZ9Q2HJ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSCameraUsageDescription = "Regimen uses your camera to capture skincare progress photos.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Regimen uses your camera to take progress photos and to scan product barcodes.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -562,8 +573,9 @@
 				DEVELOPMENT_TEAM = N92ZZ9Q2HJ;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Config/Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSCameraUsageDescription = "Regimen uses your camera to capture skincare progress photos.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Regimen uses your camera to take progress photos and to scan product barcodes.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

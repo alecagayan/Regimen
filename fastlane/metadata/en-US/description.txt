@@ -1,0 +1,44 @@
+Regimen keeps your skincare routine honest. It tracks what you actually use, warns you when two products shouldn't go on your face together, and shows you whether your skin is changing or you just think it is.
+
+BUILD A ROUTINE THAT MAKES SENSE
+
+Add your products and Regimen puts them in the order dermatologists generally recommend applying them: cleanser, treatments, moisturizer, sunscreen. Morning and evening lists stay separate, and products on a schedule (a retinoid three nights a week, an exfoliant on Tuesdays) only show up on the days they're due.
+
+CATCH INGREDIENT CLASHES BEFORE THEY IRRITATE YOU
+
+Some actives undermine each other. Pure vitamin C needs a low pH that niacinamide can raise. Benzoyl peroxide can deactivate a retinoid layered over it. Exfoliating acids alongside a retinoid raise the odds of a compromised barrier.
+
+Regimen flags these the moment both products land in the same routine, and explains why in plain language rather than just showing a warning icon. It reads your products' ingredient lists too, so a serum you typed in by hand still gets checked.
+
+SEE WHETHER IT'S WORKING
+
+Take a progress photo and Regimen analyzes it on your iPhone, producing a 0-100 score and a per-zone read on what it found across your forehead, nose, cheeks and chin. Track that over weeks and the trend chart marks when you started each new product, so a change in your skin lines up against a change in your routine.
+
+The analysis runs entirely on-device using Core ML. Your photo is never uploaded for scoring, never sent to us, and never used to train anything.
+
+KNOW WHEN YOU'LL RUN OUT
+
+Regimen learns how fast you get through each bottle from your own check-offs and predicts when it will be empty, so you can reorder before you run out mid-routine rather than after.
+
+KEEP THE HABIT
+
+A streak counts every day you log something. Days when nothing was scheduled don't break it. A Home Screen and Lock Screen widget shows what's left today and lets you tick items off without opening the app.
+
+ALSO INSIDE
+
+- Log reactions on bad skin days and see which products you'd started shortly before
+- Flags for fragrance, drying alcohol, essential oils and pregnancy cautions in ingredient lists
+- Barcode scanning to add products quickly
+- A record of finished bottles and whether you'd buy them again
+- Export everything you've stored as a JSON file, any time
+- Adjustable AM/PM changeover for anyone who doesn't work daytime hours
+
+PREMIUM
+
+Regimen is free to use for tracking your routine, reorders and streaks, and includes one skin scan. Premium unlocks unlimited scans, the score trend, per-zone progress, timeline insights and the weekly digest.
+
+Subscriptions renew automatically unless cancelled at least 24 hours before the end of the period. Payment is charged to your Apple ID at confirmation. Manage or cancel in your Apple ID settings.
+
+A NOTE ON WHAT THIS IS
+
+Regimen gives general guidance from a photo scan and from well-established ingredient interactions. It is not a medical device and does not diagnose anything. See a dermatologist for anything persistent or painful.

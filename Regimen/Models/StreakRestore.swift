@@ -25,15 +25,6 @@ struct StreakRestore: Identifiable, Codable, Hashable {
         case restoredOn = "restored_on"
     }
 
-    /// Fixed to the POSIX locale and a fixed format so parsing never
-    /// depends on the device's locale or calendar settings.
-    static let dayFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter
-    }()
-
     init(id: UUID = UUID(), userID: UUID, restoredOn: Date) {
         self.id = id
         self.userID = userID
@@ -44,21 +35,13 @@ struct StreakRestore: Identifiable, Codable, Hashable {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
         userID = try container.decode(UUID.self, forKey: .userID)
-        let raw = try container.decode(String.self, forKey: .restoredOn)
-        guard let parsed = Self.dayFormatter.date(from: raw) else {
-            throw DecodingError.dataCorruptedError(
-                forKey: .restoredOn,
-                in: container,
-                debugDescription: "Expected yyyy-MM-dd, got \(raw)"
-            )
-        }
-        restoredOn = parsed
+        restoredOn = try PostgresDay.decode(from: container, forKey: .restoredOn)
     }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)
         try container.encode(userID, forKey: .userID)
-        try container.encode(Self.dayFormatter.string(from: restoredOn), forKey: .restoredOn)
+        try container.encode(PostgresDay.string(from: restoredOn), forKey: .restoredOn)
     }
 }

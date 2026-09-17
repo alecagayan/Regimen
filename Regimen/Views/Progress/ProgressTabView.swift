@@ -24,6 +24,11 @@ struct ProgressTabView: View {
     /// a menu anchored to a button in the middle of an empty screen reads
     /// as a dead end.
     @State private var showingPhotoSourceDialog = false
+    @State private var showingReactionLog = false
+    /// Held while the confirmation is up. Deleting a photo of your own face
+    /// is irreversible and takes the scan, its overlay and its per-zone
+    /// history with it, so it always asks first.
+    @State private var photoPendingDeletion: ProgressPhoto?
 
     private let columns = [GridItem(.flexible(), spacing: Theme.Spacing.sm), GridItem(.flexible(), spacing: Theme.Spacing.sm)]
 
@@ -48,70 +53,111 @@ struct ProgressTabView: View {
                     )
 
                     ScrollView {
-                        if appData.progressPhotos.isEmpty {
-                            EmptyStateView(
-                                icon: "camera",
-                                title: "Blank Slate",
-                                message: "Take a well-lit, front-facing photo. Regimen scans it on-device for problem areas and tracks how your skin changes.",
-                                actionTitle: "Add Your First Photo",
-                                action: { showingPhotoSourceDialog = true }
-                            )
-                            .padding(.top, Theme.Spacing.xl)
-                        } else {
-                            VStack(spacing: Theme.Spacing.sm) {
-                                if !appData.usageLogs.isEmpty {
-                                    PremiumGate(
-                                        isPremium: appData.isPremium,
-                                        title: "Weekly Insight Digest",
-                                        message: "Days logged, streak, score movement, and what's running low, at a glance."
-                                    ) {
-                                        WeeklyDigestCard(digest: WeeklyDigestEngine.build(
-                                            products: appData.products,
-                                            usageLogs: appData.usageLogs,
-                                            progressPhotos: appData.progressPhotos
-                                        ))
-                                    }
-                                }
+                        VStack(spacing: 0) {
+                            if appData.progressPhotos.isEmpty {
+                                EmptyStateView(
+                                    icon: "camera",
+                                    title: "Blank Slate",
+                                    message: "Take a well-lit, front-facing photo. Regimen scans it on-device and tracks how your skin changes.",
+                                    actionTitle: "Add Your First Photo",
+                                    action: { showingPhotoSourceDialog = true }
+                                )
+                                .padding(.top, Theme.Spacing.xl)
+                            } else {
+                                VStack(spacing: Theme.Spacing.sm) {
+                                    reactionRow
 
-                                if scoredPhotos.count >= 2 {
-                                    PremiumGate(
-                                        isPremium: appData.isPremium,
-                                        title: "Skin Score Trend",
-                                        message: "A chart of your score over time, with markers for when you started new products."
-                                    ) {
-                                        SkinScoreTrendCard(photos: scoredPhotos, products: appData.products)
-                                    }
-
-                                    let zoneProgress = PerZoneProgressEngine.build(zoneFindings: appData.zoneFindings, progressPhotos: appData.progressPhotos)
-                                    if !zoneProgress.isEmpty {
+                                    let insights = SkinTimelineEngine.insights(
+                                        products: appData.products,
+                                        reactions: appData.reactions,
+                                        photos: appData.progressPhotos
+                                    )
+                                    if !insights.isEmpty {
                                         PremiumGate(
                                             isPremium: appData.isPremium,
-                                            title: "Per-Zone Progress",
-                                            message: "See which face zones have improved since your first scan."
+                                            title: "Timeline Insights",
+                                            message: "Which products lined up with reactions, and how your score moved after starting them."
                                         ) {
-                                            PerZoneProgressCard(zoneProgress: zoneProgress)
+                                            TimelineInsightsCard(insights: insights)
+                                        }
+                                    }
+
+                                    if !appData.usageLogs.isEmpty {
+                                        PremiumGate(
+                                            isPremium: appData.isPremium,
+                                            title: "Weekly Insight Digest",
+                                            message: "Days logged, streak, score, and what's running low."
+                                        ) {
+                                            WeeklyDigestCard(digest: WeeklyDigestEngine.build(
+                                                products: appData.products,
+                                                usageLogs: appData.usageLogs,
+                                                progressPhotos: appData.progressPhotos,
+                                                restores: appData.streakRestores
+                                            ))
+                                        }
+                                    }
+
+                                    if scoredPhotos.count >= 2 {
+                                        PremiumGate(
+                                            isPremium: appData.isPremium,
+                                            title: "Skin Score Trend",
+                                            message: "Your score over time, marked with when you started new products."
+                                        ) {
+                                            SkinScoreTrendCard(photos: scoredPhotos, products: appData.products)
+                                        }
+
+                                        let zoneProgress = PerZoneProgressEngine.build(zoneFindings: appData.zoneFindings, progressPhotos: appData.progressPhotos)
+                                        if !zoneProgress.isEmpty {
+                                            PremiumGate(
+                                                isPremium: appData.isPremium,
+                                                title: "Per-Zone Progress",
+                                                message: "Which zones have improved since your first scan."
+                                            ) {
+                                                PerZoneProgressCard(zoneProgress: zoneProgress)
+                                            }
                                         }
                                     }
                                 }
-                            }
-                            .padding(.horizontal, Theme.Spacing.lg)
-                            .padding(.bottom, Theme.Spacing.md)
+                                .padding(.horizontal, Theme.Spacing.lg)
+                                .padding(.bottom, Theme.Spacing.md)
 
-                            LazyVGrid(columns: columns, spacing: Theme.Spacing.sm) {
-                                ForEach(appData.progressPhotos) { photo in
-                                    PhotoThumbnail(
-                                        photo: photo,
-                                        url: appData.signedPhotoURLs[photo.storagePath],
-                                        isSelected: selectionForCompare.contains(photo),
-                                        onShowDetail: { detailPhoto = photo }
-                                    )
-                                    .onTapGesture { toggleSelection(photo) }
+                                LazyVGrid(columns: columns, spacing: Theme.Spacing.sm) {
+                                    ForEach(appData.progressPhotos) { photo in
+                                        PhotoThumbnail(
+                                            photo: photo,
+                                            url: appData.signedPhotoURLs[photo.storagePath],
+                                            isSelected: selectionForCompare.contains(photo),
+                                            onShowDetail: { detailPhoto = photo },
+                                            onToggleSelection: { toggleSelection(photo) },
+                                            onDelete: { photoPendingDeletion = photo }
+                                        )
+                                    }
                                 }
+                                .padding(.horizontal, Theme.Spacing.lg)
+                                .padding(.bottom, Theme.Spacing.floatingButtonClearance)
                             }
-                            .padding(.horizontal, Theme.Spacing.lg)
-                            .padding(.bottom, Theme.Spacing.floatingButtonClearance)
                         }
+                        // Pins the content to exactly the scroll view's width.
+                        //
+                        // Without it this stack settled at 402.166667pt inside
+                        // a 402pt viewport. A third of a point is one physical
+                        // pixel at @3x and invisible, but it makes
+                        // contentSize.width exceed bounds.width, and that alone
+                        // switches the scroll view's horizontal axis on. The
+                        // scrollable range is then a third of a point, so a
+                        // drag that drifts sideways is almost entirely
+                        // overscroll: the content follows the finger and
+                        // rubber-bands back, which reads as the whole grid
+                        // sliding around while you scroll.
+                        //
+                        // The fraction comes out of SwiftUI's own layout
+                        // rounding for this stack, not from any one subview --
+                        // every child measured whole. So the fix pins the
+                        // width rather than chasing the subpixel, and holds if
+                        // the cards above change.
+                        .containerRelativeFrame(.horizontal)
                     }
+                    .refreshable { await appData.loadAll() }
                 }
                 .background(Color.appBackground.ignoresSafeArea())
 
@@ -137,7 +183,7 @@ struct ProgressTabView: View {
                         .transition(.opacity)
                 }
             }
-            .animation(.spring(response: 0.3, dampingFraction: 0.8), value: selectionForCompare.count)
+            .motion(Motion.card, value: selectionForCompare.count)
             .toolbar(.hidden, for: .navigationBar)
             .confirmationDialog("Add a Photo", isPresented: $showingPhotoSourceDialog, titleVisibility: .visible) {
                 if UIImagePickerController.isSourceTypeAvailable(.camera) {
@@ -153,7 +199,10 @@ struct ProgressTabView: View {
                 CameraCaptureView(
                     onCapture: { image in
                         showingCamera = false
-                        Task { await appData.addPhoto(image: image) }
+                        // Straight into the detail sheet, where the scan
+                        // button is -- taking a photo and scanning it is one
+                        // intention, not two.
+                        Task { detailPhoto = await appData.addPhoto(image: image) }
                     },
                     onCancel: { showingCamera = false }
                 )
@@ -167,6 +216,26 @@ struct ProgressTabView: View {
                         afterURL: appData.signedPhotoURLs[sorted[1].storagePath]
                     )
                 }
+            }
+            .sheet(isPresented: $showingReactionLog) {
+                ReactionLogView()
+            }
+            .confirmationDialog(
+                "Delete this photo?",
+                isPresented: Binding(
+                    get: { photoPendingDeletion != nil },
+                    set: { if !$0 { photoPendingDeletion = nil } }
+                ),
+                titleVisibility: .visible,
+                presenting: photoPendingDeletion
+            ) { photo in
+                Button("Delete Photo", role: .destructive) {
+                    Task { await appData.deletePhoto(photo) }
+                    photoPendingDeletion = nil
+                }
+                Button("Cancel", role: .cancel) { photoPendingDeletion = nil }
+            } message: { _ in
+                Text("This removes the photo, its scan and its score for good. Your other scans and your streak are untouched.")
             }
             .sheet(item: $detailPhoto) { photo in
                 PhotoDetailView(photo: photo, url: appData.signedPhotoURLs[photo.storagePath])
@@ -185,6 +254,38 @@ struct ProgressTabView: View {
                 Text(appData.photoUploadErrorMessage ?? "")
             }
         }
+    }
+
+    /// A one-tap way to mark today as a bad skin day, and a readout when
+    /// it already is. Sits above the timeline because that's where the
+    /// trend it explains is drawn.
+    private var reactionRow: some View {
+        let today = appData.reaction(on: .now)
+        return Button {
+            showingReactionLog = true
+        } label: {
+            HStack(spacing: Theme.Spacing.md) {
+                Image(systemName: today == nil ? "face.smiling" : "exclamationmark.bubble.fill")
+                    .font(.body)
+                    .foregroundStyle(today == nil ? Color.secondary : Color.orange)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(today == nil ? "Skin reacting today?" : "Logged: \(today?.severity.label ?? "")")
+                        .font(.rowSubtitle.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text(today == nil ? "Log it to spot what set it off." : "Tap to change.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(Theme.Spacing.md)
+            .cardStyle()
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private var addMenu: some View {
@@ -236,7 +337,7 @@ struct ProgressTabView: View {
             let data = try? await item.loadTransferable(type: Data.self),
             let image = UIImage(data: data)
         else { return }
-        await appData.addPhoto(image: image)
+        detailPhoto = await appData.addPhoto(image: image)
         photosPickerItem = nil
     }
 }
@@ -246,6 +347,8 @@ private struct PhotoThumbnail: View {
     let url: URL?
     let isSelected: Bool
     let onShowDetail: () -> Void
+    let onToggleSelection: () -> Void
+    let onDelete: () -> Void
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -270,6 +373,11 @@ private struct PhotoThumbnail: View {
                 Text(photo.timestamp, style: .date)
                     .font(.chipLabel)
                     .foregroundStyle(.white)
+                if photo.note?.isEmpty == false {
+                    Image(systemName: "text.quote")
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.9))
+                }
                 Spacer()
                 if let score = photo.skinScore {
                     Text("\(Int(score.rounded()))")
@@ -288,26 +396,129 @@ private struct PhotoThumbnail: View {
             RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
                 .strokeBorder(isSelected ? Color.brand : Color.clear, lineWidth: 3)
         }
+        // Selection is the corner control; the photo itself opens its scan.
+        // The two were the other way round, which made the app's main
+        // feature the secondary gesture on its own photo -- tapping a scan
+        // result silently armed a comparison instead of opening it.
         .overlay(alignment: .topTrailing) {
-            if isSelected {
+            Button(action: onToggleSelection) {
                 ZStack {
-                    Circle().fill(Color.brand)
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(.white)
+                    Circle()
+                        .fill(isSelected ? Color.brand : Color.black.opacity(0.35))
+                    Circle()
+                        .strokeBorder(Color.white.opacity(isSelected ? 0 : 0.9), lineWidth: 1.5)
+                    if isSelected {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(.white)
+                    }
                 }
-                .frame(width: 24, height: 24)
-                .padding(8)
-            } else {
-                Button(action: onShowDetail) {
-                    Image(systemName: "info.circle.fill")
-                        .font(.title3)
-                        .foregroundStyle(.white, .black.opacity(0.35))
-                }
-                .padding(6)
+                .frame(width: 26, height: 26)
+                .contentShape(Circle())
             }
+            .buttonStyle(.plain)
+            .padding(8)
+            .accessibilityLabel(isSelected ? "Deselect for comparison" : "Select for comparison")
+            .accessibilityAddTraits(isSelected ? [.isSelected] : [])
         }
         .shadow(color: .black.opacity(0.08), radius: 10, x: 0, y: 4)
+        .contentShape(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        .onTapGesture(perform: onShowDetail)
+        .contextMenu {
+            Button("Open Scan", systemImage: "sparkles", action: onShowDetail)
+            Button("Delete Photo", systemImage: "trash", role: .destructive, action: onDelete)
+        }
+        // Without this the tile reads to VoiceOver as a pile of unrelated
+        // fragments -- an image, a gradient and two floating labels -- with
+        // no indication it does anything.
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint("Double tap to open this scan")
+    }
+
+    private var accessibilityLabel: String {
+        let date = photo.timestamp.formatted(date: .abbreviated, time: .omitted)
+        guard let score = photo.skinScore else {
+            return "Photo from \(date), not yet scanned"
+        }
+        return "Photo from \(date), skin score \(Int(score.rounded()))"
+    }
+}
+
+/// What `SkinTimelineEngine` found by comparing product start dates
+/// against reactions and scan history.
+///
+/// Every line is deliberately hedged. This is a single-subject timeline
+/// with no control group, so the honest framing is "these coincided",
+/// which is also genuinely useful: the user knows things about their own
+/// life that the app never will, and is far better placed to judge a
+/// coincidence once it's pointed out.
+private struct TimelineInsightsCard: View {
+    let insights: SkinTimelineEngine.Insights
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Spacing.md) {
+            Text("WORTH LOOKING AT")
+                .font(.sectionLabel)
+                .foregroundStyle(.secondary)
+
+            if !insights.suspects.isEmpty {
+                VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                    Text("Started just before a reaction")
+                        .font(.rowTitle)
+                    ForEach(insights.suspects.prefix(3)) { suspect in
+                        row(
+                            icon: "exclamationmark.bubble",
+                            tint: .orange,
+                            title: suspect.product.name,
+                            detail: suspect.summary
+                        )
+                    }
+                }
+            }
+
+            if !insights.shifts.isEmpty {
+                VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
+                    Text("Score moved after starting")
+                        .font(.rowTitle)
+                    ForEach(insights.shifts.prefix(3)) { shift in
+                        row(
+                            icon: shift.isImprovement ? "arrow.up.right" : "arrow.down.right",
+                            tint: shift.isImprovement ? .green : .red,
+                            title: shift.product.name,
+                            detail: "\(shift.summary) (\(shift.scansBefore) scans before, \(shift.scansAfter) after)"
+                        )
+                    }
+                }
+            }
+
+            Text("These things happened around the same time. That isn't proof one caused the other, and skin changes for plenty of reasons the app can't see.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(Theme.Spacing.md)
+        .cardStyle()
+    }
+
+    private func row(icon: String, tint: Color, title: String, detail: String) -> some View {
+        HStack(alignment: .top, spacing: Theme.Spacing.sm) {
+            Image(systemName: icon)
+                .font(.footnote)
+                .foregroundStyle(tint)
+                .frame(width: 18)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.rowSubtitle.weight(.semibold))
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
     }
 }
 
@@ -360,7 +571,7 @@ private struct WeeklyDigestCard: View {
                     Image(systemName: "star.fill")
                         .font(.footnote)
                         .foregroundStyle(Color.brand)
-                    Text("Most used: **\(product.name)** — \(digest.mostConsistentUseCount)x")
+                    Text("Most used: **\(product.name)**, \(digest.mostConsistentUseCount)x")
                         .font(.rowSubtitle)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -429,7 +640,7 @@ private struct PerZoneProgressCard: View {
                 }
             }
 
-            Text("Flagged area per face zone, from your first scan to your latest.")
+            Text("Flagged area per zone, first scan to latest.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -618,7 +829,7 @@ private struct SkinScoreTrendCard: View {
             // The score's own real-world accuracy is modest (see
             // SkinScanService) -- framed as a direction to watch, not a
             // number to obsess over week to week.
-            Text("Trend across your scanned photos — a directional read, not a precise measurement.")
+            Text("A directional read across your scans, not a precise measurement.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
@@ -640,7 +851,7 @@ private struct SkinScoreTrendCard: View {
                     Rectangle()
                         .fill(Color.secondary.opacity(0.35))
                         .frame(width: 10, height: 1)
-                    Text("Started \(milestone.productNames.joined(separator: ", ")) — \(milestone.date.formatted(.dateTime.month(.abbreviated).day()))")
+                    Text("Started \(milestone.productNames.joined(separator: ", ")), \(milestone.date.formatted(.dateTime.month(.abbreviated).day()))")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)

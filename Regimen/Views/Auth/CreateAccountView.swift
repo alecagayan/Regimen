@@ -29,8 +29,12 @@ struct CreateAccountView: View {
                 } else {
                     AuthBranding(
                         title: "Create Your Account",
-                        subtitle: "Track your routine, predict reorders, and see your progress — synced to your account."
+                        subtitle: "Your routine, reorders, and progress, synced to your account."
                     )
+
+                    AppleSignInButton(errorMessage: $errorMessage)
+
+                    AuthDivider()
 
                     VStack(spacing: Theme.Spacing.sm) {
                         AuthField(title: "Name", text: $name, textContentType: .name)

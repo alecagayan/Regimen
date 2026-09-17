@@ -5,6 +5,7 @@
 
 import CoreML
 import UIKit
+import os
 
 /// Whole-face binary classifiers trained on killa92's own severity labels
 /// (see RegimenSkinModel/src/train_killa92_attribute.py). Of 12 columns
@@ -30,6 +31,25 @@ enum SkinAttribute: String, CaseIterable {
         case .darkSpots: "Widespread dark-spot look"
         case .unevenSkin: "Uneven skin tone"
         }
+    }
+
+    /// What gets written to `progress_photos.skin_attributes`.
+    ///
+    /// Deliberately not `rawValue`: that's the Core ML model's *filename*,
+    /// so renaming or retraining a model would silently invalidate every
+    /// row already stored under the old name. These keys are the app's own
+    /// and never change.
+    var persistenceKey: String {
+        switch self {
+        case .sensitivity: "sensitivity"
+        case .darkSpots: "dark_spots"
+        case .unevenSkin: "uneven_skin"
+        }
+    }
+
+    init?(persistenceKey: String) {
+        guard let match = Self.allCases.first(where: { $0.persistenceKey == persistenceKey }) else { return nil }
+        self = match
     }
 }
 
@@ -61,7 +81,7 @@ final class SkinAttributeService {
         var flagged: [SkinAttribute] = []
         for attribute in SkinAttribute.allCases {
             guard let probability = try? await predict(attribute: attribute, cgImage: faceCGImage) else { continue }
-            print("SkinAttributeService \(attribute.rawValue): p=\(String(format: "%.2f", probability))")
+            AppLog.scan.debug("attribute \(attribute.rawValue, privacy: .public): p=\(probability, format: .fixed(precision: 2), privacy: .public)")
             if probability >= threshold {
                 flagged.append(attribute)
             }

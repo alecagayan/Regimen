@@ -27,6 +27,12 @@ struct RootView: View {
     @State private var auth = AuthService.shared
     @State private var appData: AppData?
     @State private var showOnboarding = false
+    /// Shown after a password-reset link is opened. Lives here rather than
+    /// on the auth screens because the link arrives while signed out and
+    /// then *signs the user in*, so by the time it's handled `RootView`
+    /// has already swapped to the main app -- a sheet owned by the
+    /// sign-in screen would be torn down mid-flow.
+    @State private var showSetNewPassword = false
 
     var body: some View {
         Group {
@@ -34,12 +40,19 @@ struct RootView: View {
                 loadingView
             } else if let session = auth.session {
                 if let appData {
+                    // Deliberately no notification prompt here. iOS grants
+                    // exactly one chance to ask, ever, and asking the
+                    // instant a session exists -- before a product has been
+                    // added or a scan run -- spends it at the moment the
+                    // user has least reason to say yes. A denial is then
+                    // permanent short of a trip to Settings, which silently
+                    // caps reorder and streak reminders for that install
+                    // forever. It's asked for at the points where the value
+                    // is already obvious instead: finishing a routine (see
+                    // `RoutineView`) and switching reminders on in Settings.
                     ContentView()
                         .environment(appData)
                         .environment(\.signOut, signOut)
-                        .task {
-                            await NotificationManager.shared.requestAuthorizationIfNeeded()
-                        }
                         .fullScreenCover(isPresented: $showOnboarding) {
                             OnboardingView(onFinish: {
                                 Task { await completeOnboarding() }
@@ -54,6 +67,17 @@ struct RootView: View {
             } else {
                 AuthContainerView()
             }
+        }
+        // Recovery links have to be caught above the signed-in/signed-out
+        // split, since opening one crosses it.
+        .onOpenURL { url in
+            Task {
+                guard (try? await auth.completePasswordRecovery(from: url)) == true else { return }
+                showSetNewPassword = true
+            }
+        }
+        .sheet(isPresented: $showSetNewPassword) {
+            SetNewPasswordView()
         }
     }
 
@@ -94,6 +118,11 @@ struct RootView: View {
     }
 
     private func signOut() async throws {
+        // Wipe this account's on-disk snapshot and pending writes before
+        // dropping the reference -- otherwise the next person to sign in on
+        // this device would have the previous user's products and skin
+        // scores sitting in Application Support.
+        appData?.clearLocalData()
         try await auth.signOut()
         appData = nil
     }

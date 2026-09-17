@@ -17,6 +17,10 @@ enum PhotoStorageService {
     private static var bucket: String { "progress-photos" }
     private static let signedURLLifetime = 3600
 
+    /// The same lifetime as a `TimeInterval`, for callers that need to say
+    /// when a minted batch stops working (the data export does).
+    static var signedURLLifetimeInterval: TimeInterval { TimeInterval(signedURLLifetime) }
+
     static func upload(image: UIImage, userID: UUID) async throws -> String {
         guard let data = image.jpegData(compressionQuality: 0.85) else {
             throw PhotoStorageError.encodingFailed
@@ -30,6 +34,29 @@ enum PhotoStorageService {
         try await SupabaseManager.client.storage
             .from(bucket)
             .upload(path, data: data, options: FileOptions(contentType: "image/jpeg"))
+        return path
+    }
+
+    /// Stores a scan's rendered highlight overlay next to the photo it
+    /// belongs to, so reopening a scanned photo can redraw the highlights
+    /// without re-running the models (which a free account can't do at
+    /// all). PNG, not JPEG: the overlay is mostly transparent, and JPEG
+    /// has no alpha channel to preserve.
+    ///
+    /// Named after the photo's own id so re-scanning overwrites rather
+    /// than orphaning the previous overlay.
+    static func uploadOverlay(image: UIImage, userID: UUID, photoID: UUID) async throws -> String {
+        guard let data = image.pngData() else {
+            throw PhotoStorageError.encodingFailed
+        }
+        let path = "\(userID.uuidString.lowercased())/overlay-\(photoID.uuidString.lowercased()).png"
+        try await SupabaseManager.client.storage
+            .from(bucket)
+            .upload(
+                path,
+                data: data,
+                options: FileOptions(contentType: "image/png", upsert: true)
+            )
         return path
     }
 

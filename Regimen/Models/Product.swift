@@ -33,6 +33,26 @@ enum ConflictTag: String, Codable, CaseIterable, Identifiable, Hashable {
     case copperPeptide = "Copper Peptide"
     case benzoylPeroxide = "Benzoyl Peroxide"
     var id: String { rawValue }
+
+    /// Actives that usually need tolerance built up first -- potent enough
+    /// that starting straight in on them is the common cause of an
+    /// irritated barrier, which then undoes whatever they were meant to
+    /// fix. Used by both `RecommendationEngine` (to flag a card as
+    /// "ease in") and `RoutineBuilderEngine` (to prefer a gentler pick),
+    /// so the two can't give contradictory advice about the same
+    /// ingredient.
+    ///
+    /// Benzoyl peroxide counts here alongside the obvious three: it's
+    /// reliably drying and bleaches fabric, which is exactly the kind of
+    /// surprise a beginner shouldn't get unwarned.
+    var isDemanding: Bool {
+        switch self {
+        case .retinoid, .exfoliatingAcid, .pureVitaminC, .benzoylPeroxide:
+            true
+        case .none, .vitaminCDerivative, .niacinamide, .copperPeptide:
+            false
+        }
+    }
 }
 
 /// Maps 1:1 to the `products` table in Supabase Postgres (see
@@ -56,6 +76,10 @@ struct Product: Identifiable, Codable, Hashable {
     var applicationOrder: Int
     /// Every flaggable active this product contains -- see `ConflictTag`
     /// for why this is an array and not a single value. Empty means none.
+    ///
+    /// Only ever what was chosen explicitly (by hand, or copied from a
+    /// catalog row). For conflict checking use `effectiveConflictTags`,
+    /// which also reads the ingredient list.
     var conflictTags: [ConflictTag]
     var sizeInML: Double
     /// How much of this specific product gets used per application, in mL.
@@ -67,6 +91,24 @@ struct Product: Identifiable, Codable, Hashable {
     var typicalDoseML: Double
     var openedDate: Date
     var isArchived: Bool
+
+    /// How often this product is used. Decoded through `ProductFrequency`
+    /// -- see `Product.frequency` in ProductSchedule.swift. Stored as three
+    /// flat columns so a row stays readable in the Supabase dashboard.
+    var frequencyKind: String
+    var frequencyDaysOfWeek: [Int]
+    var frequencyIntervalDays: Int
+
+    /// Period-after-opening in months (the "6M"/"12M" jar symbol). Nil when
+    /// the user hasn't said, which is not the same as "never expires".
+    var monthsAfterOpening: Int?
+
+    /// Full INCI list, when a catalog entry or a barcode lookup supplied
+    /// one. The eight `ConflictTag` values remain what the conflict engine
+    /// reasons about; this is the raw list behind them, and what
+    /// `IngredientInsights` reads to flag fragrance, drying alcohol and
+    /// pregnancy cautions.
+    var ingredients: [String]
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -81,6 +123,35 @@ struct Product: Identifiable, Codable, Hashable {
         case typicalDoseML = "typical_dose_ml"
         case openedDate = "opened_date"
         case isArchived = "is_archived"
+        case frequencyKind = "frequency_kind"
+        case frequencyDaysOfWeek = "frequency_days_of_week"
+        case frequencyIntervalDays = "frequency_interval_days"
+        case monthsAfterOpening = "months_after_opening"
+        case ingredients
+    }
+
+    /// Rows written before `schedules_and_history.sql` ran have none of
+    /// these columns, so they decode as absent rather than failing the
+    /// whole product fetch.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        userID = try container.decode(UUID.self, forKey: .userID)
+        name = try container.decode(String.self, forKey: .name)
+        brand = try container.decode(String.self, forKey: .brand)
+        routineTime = try container.decode(RoutineTime.self, forKey: .routineTime)
+        layerCategory = try container.decode(LayerCategory.self, forKey: .layerCategory)
+        applicationOrder = try container.decode(Int.self, forKey: .applicationOrder)
+        conflictTags = try container.decodeIfPresent([ConflictTag].self, forKey: .conflictTags) ?? []
+        sizeInML = try container.decode(Double.self, forKey: .sizeInML)
+        typicalDoseML = try container.decodeIfPresent(Double.self, forKey: .typicalDoseML) ?? layerCategory.defaultDoseML
+        openedDate = try container.decode(Date.self, forKey: .openedDate)
+        isArchived = try container.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
+        frequencyKind = try container.decodeIfPresent(String.self, forKey: .frequencyKind) ?? "daily"
+        frequencyDaysOfWeek = try container.decodeIfPresent([Int].self, forKey: .frequencyDaysOfWeek) ?? []
+        frequencyIntervalDays = try container.decodeIfPresent(Int.self, forKey: .frequencyIntervalDays) ?? 1
+        monthsAfterOpening = try container.decodeIfPresent(Int.self, forKey: .monthsAfterOpening)
+        ingredients = try container.decodeIfPresent([String].self, forKey: .ingredients) ?? []
     }
 
     init(
@@ -95,7 +166,10 @@ struct Product: Identifiable, Codable, Hashable {
         sizeInML: Double,
         typicalDoseML: Double? = nil,
         openedDate: Date,
-        isArchived: Bool = false
+        isArchived: Bool = false,
+        frequency: ProductFrequency = .daily,
+        monthsAfterOpening: Int? = nil,
+        ingredients: [String] = []
     ) {
         self.id = id
         self.userID = userID
@@ -109,5 +183,35 @@ struct Product: Identifiable, Codable, Hashable {
         self.typicalDoseML = typicalDoseML ?? layerCategory.defaultDoseML
         self.openedDate = openedDate
         self.isArchived = isArchived
+        self.frequencyKind = frequency.kindKey
+        self.frequencyDaysOfWeek = frequency.storedDaysOfWeek
+        self.frequencyIntervalDays = frequency.storedIntervalDays
+        self.monthsAfterOpening = monthsAfterOpening
+        self.ingredients = ingredients
+    }
+}
+
+extension Product {
+    /// Tags implied by the ingredient list but not explicitly set.
+    ///
+    /// Kept separate from `effectiveConflictTags` so the edit screen can
+    /// show "we found these in the ingredients" as a distinct, dismissible
+    /// suggestion rather than silently ticking boxes on the user's behalf.
+    var derivedConflictTags: [ConflictTag] {
+        let explicit = Set(conflictTags)
+        return IngredientConflictMapper.tags(for: ingredients).filter { !explicit.contains($0) }
+    }
+
+    /// What conflict checking actually runs against: the tags chosen
+    /// explicitly, plus anything the ingredient list plainly implies.
+    ///
+    /// The union rather than a fallback, deliberately. A product whose
+    /// ingredients list retinol conflicts with an exfoliating acid whether
+    /// or not anyone remembered to tick "Retinoid" -- and the products
+    /// least likely to have been tagged by hand (typed in manually, in a
+    /// hurry) are exactly the ones a user would most want caught.
+    var effectiveConflictTags: [ConflictTag] {
+        let combined = Set(conflictTags).union(IngredientConflictMapper.tags(for: ingredients))
+        return ConflictTag.allCases.filter { combined.contains($0) && $0 != .none }
     }
 }

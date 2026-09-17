@@ -30,11 +30,35 @@ enum WeeklyDigestEngine {
         products: [Product],
         usageLogs: [UsageLog],
         progressPhotos: [ProgressPhoto],
+        restores: [StreakRestore] = [],
         calendar: Calendar = .current,
         now: Date = .now
     ) -> Digest {
-        let streakResult = StreakCalculator.compute(from: usageLogs, historyLength: 7, calendar: calendar, now: now)
-        let daysLogged = streakResult.recentDays.filter { $0 }.count
+        // Restores and products both have to go in, or this reports a
+        // different streak than the Routine tab's badge does from the same
+        // data -- they were genuinely disagreeing on screen (23 vs 1),
+        // because a restore-bridged day and a rest day count there and
+        // were invisible here.
+        let streakResult = StreakCalculator.compute(
+            from: usageLogs,
+            restores: restores,
+            products: products,
+            historyLength: 7,
+            calendar: calendar,
+            now: now
+        )
+        // "Days logged" is deliberately NOT read off the streak's own
+        // recentDays any more. That set now includes days bridged by a
+        // restore and days with nothing scheduled, and counting either as
+        // a day the user showed up would overstate adherence -- the streak
+        // may forgive a day, but this number reports what actually
+        // happened.
+        let today = calendar.startOfDay(for: now)
+        let loggedDays = StreakCalculator.loggedDays(logs: usageLogs, calendar: calendar)
+        let daysLogged = (0..<7).count { offset in
+            guard let day = calendar.date(byAdding: .day, value: -offset, to: today) else { return false }
+            return loggedDays.contains(day)
+        }
 
         let weekStart = calendar.date(byAdding: .day, value: -7, to: now) ?? now
 

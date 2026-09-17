@@ -50,7 +50,7 @@ enum ConflictChecker {
         TagPair(.pureVitaminC, .niacinamide):
             "Pure vitamin C (L-ascorbic acid) needs a low pH to stay stable, and niacinamide can raise that pH. Vitamin C derivatives don't have this stability issue, so they aren't flagged here.",
         TagPair(.retinoid, .benzoylPeroxide):
-            "Benzoyl peroxide can oxidize and deactivate retinoids when layered together — most routines use one in the AM and the other at night, or alternate evenings.",
+            "Benzoyl peroxide can oxidize and deactivate retinoids when layered together. Most routines use one in the morning and the other at night.",
     ]
 
     /// Returns every pairwise conflict among the given products' conflict
@@ -63,7 +63,11 @@ enum ConflictChecker {
     /// product's first or "primary" tag would silently miss a real
     /// conflict sitting on its second one.
     static func conflicts(among products: [Product]) -> [Conflict] {
-        let tagged = products.filter { !$0.conflictTags.isEmpty }
+        // `effectiveConflictTags`, not `conflictTags`: a product tagged
+        // only by its ingredient list has to take part in conflict
+        // checking too, or the feature keeps missing exactly the
+        // hand-entered products it was most needed for.
+        let tagged = products.filter { !$0.effectiveConflictTags.isEmpty }
         guard tagged.count > 1 else { return [] }
 
         var found: [Conflict] = []
@@ -71,7 +75,7 @@ enum ConflictChecker {
             for j in (i + 1)..<tagged.count {
                 let a = tagged[i]
                 let b = tagged[j]
-                guard let reason = firstConflictReason(between: a.conflictTags, and: b.conflictTags) else { continue }
+                guard let reason = conflictReason(between: a.effectiveConflictTags, and: b.effectiveConflictTags) else { continue }
                 found.append(Conflict(productA: a, productB: b, reason: reason))
             }
         }
@@ -81,7 +85,13 @@ enum ConflictChecker {
     /// The first known conflict between any tag in `lhs` and any tag in
     /// `rhs`, if the two products share more than one it's still just one
     /// banner per product pair, not one per ingredient combination.
-    private static func firstConflictReason(between lhs: [ConflictTag], and rhs: [ConflictTag]) -> String? {
+    ///
+    /// Exposed (rather than private to `conflicts(among:)`) so the
+    /// suggestion engines can consult the same table *before* recommending
+    /// something: catching "this fights the retinoid you already own" at
+    /// the point of suggestion is better than suggesting it and flagging
+    /// the conflict only once it's been bought and added.
+    static func conflictReason(between lhs: [ConflictTag], and rhs: [ConflictTag]) -> String? {
         for tagA in lhs {
             for tagB in rhs {
                 if let reason = conflictReasons[TagPair(tagA, tagB)] {

@@ -28,22 +28,48 @@ enum PlanEngine {
     static func plan(for result: SkinScanResult, ownedProducts: [Product]) -> Plan {
         var sections: [Plan.Section] = []
 
+        // Only a fresh scan carries per-finding locations, so the zone
+        // breakdown is the one section a restored scan can't rebuild (the
+        // saved `zone_findings` rows are already aggregated).
         let zoneItems = zoneBreakdown(result.findings)
         if !zoneItems.isEmpty {
             sections.append(Plan.Section(id: "zones", title: "Where things are", items: zoneItems))
         }
 
-        let routineItems = routineAdjustments(for: result.counts, ownedProducts: ownedProducts)
+        sections.append(contentsOf: derivedSections(counts: result.counts, attributes: result.attributes, ownedProducts: ownedProducts))
+        return Plan(sections: sections)
+    }
+
+    /// The plan for a scan restored from storage, which has counts and
+    /// attributes but no per-finding coordinates.
+    static func plan(
+        counts: [FindingKind: Int],
+        attributes: [SkinAttribute],
+        ownedProducts: [Product]
+    ) -> Plan {
+        Plan(sections: derivedSections(counts: counts, attributes: attributes, ownedProducts: ownedProducts))
+    }
+
+    /// The two sections that depend only on aggregate counts, so they can
+    /// be rebuilt for a scan restored from storage as well as a fresh one.
+    private static func derivedSections(
+        counts: [FindingKind: Int],
+        attributes: [SkinAttribute],
+        ownedProducts: [Product]
+    ) -> [Plan.Section] {
+        var sections: [Plan.Section] = []
+
+        let routineItems = routineAdjustments(for: counts, ownedProducts: ownedProducts)
         if !routineItems.isEmpty {
             sections.append(Plan.Section(id: "routine", title: "How to work it in", items: routineItems))
         }
 
-        let expectationItems = expectations(for: result.counts)
+        let expectationItems = expectations(for: counts)
         if !expectationItems.isEmpty {
             sections.append(Plan.Section(id: "expectations", title: "What to expect", items: expectationItems))
         }
 
-        return Plan(sections: sections)
+        return sections
     }
 
     // MARK: - Sections
@@ -59,7 +85,7 @@ enum PlanEngine {
                 guard count > 0 else { return nil }
                 return "\(count) \(count == 1 ? kind.singular : kind.plural)"
             }
-            return "\(zone.rawValue.prefix(1).capitalized + zone.rawValue.dropFirst()) — \(parts.joined(separator: ", "))"
+            return "\(zone.rawValue.prefix(1).capitalized + zone.rawValue.dropFirst()): \(parts.joined(separator: ", "))"
         }
     }
 
@@ -72,15 +98,15 @@ enum PlanEngine {
 
         if (counts[.blemish] ?? 0) > 0 {
             items.append("Use a BHA (salicylic acid) treatment in your PM routine, after cleansing and before moisturizer. Start 2-3 evenings a week and build up.")
-            if active.contains(where: { $0.conflictTags.contains(.retinoid) }) {
-                items.append("You also use a retinoid — alternate evenings rather than layering it with the BHA (the Routine tab flags this conflict too).")
+            if active.contains(where: { $0.effectiveConflictTags.contains(.retinoid) }) {
+                items.append("You also use a retinoid. Alternate evenings rather than layering it with the BHA.")
             }
         }
 
         if (counts[.spot] ?? 0) > 0 {
-            items.append("Use a vitamin C serum in your AM routine, after cleansing and before sunscreen — it pairs with daily SPF, which does most of the work against dark spots.")
+            items.append("Use a vitamin C serum in the morning, after cleansing and before sunscreen. It works alongside daily SPF, which does most of the work on dark spots.")
             if !active.contains(where: { $0.layerCategory == .sunscreen }) {
-                items.append("No sunscreen in your cabinet — daily SPF is the single highest-impact step for fading dark spots.")
+                items.append("No sunscreen in your cabinet. Daily SPF is the highest-impact step for fading dark spots.")
             }
         }
 
@@ -90,13 +116,13 @@ enum PlanEngine {
     private static func expectations(for counts: [FindingKind: Int]) -> [String] {
         var items: [String] = []
         if (counts[.blemish] ?? 0) > 0 {
-            items.append("Blemishes: expect 4-6 weeks of consistent use before a visible change; a brief purge in weeks 1-2 is normal with BHAs.")
+            items.append("Blemishes: expect 4 to 6 weeks before a visible change. A brief purge in the first fortnight is normal with BHAs.")
         }
         if (counts[.spot] ?? 0) > 0 {
-            items.append("Dark spots: fading is slow — think 8-12 weeks. Photograph in similar lighting weekly so the score trend means something.")
+            items.append("Dark spots: fading is slow, more like 8 to 12 weeks. Photograph in similar lighting so the trend means something.")
         }
         if !items.isEmpty {
-            items.append("This is general skincare guidance from a photo scan, not medical advice — a dermatologist beats an app for anything persistent or painful.")
+            items.append("General guidance from a photo scan, not medical advice. See a dermatologist for anything persistent or painful.")
         }
         return items
     }
